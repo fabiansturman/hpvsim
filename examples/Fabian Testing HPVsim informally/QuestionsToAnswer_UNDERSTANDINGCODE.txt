@@ -1,0 +1,4 @@
+1. In my example bit of code where I defined parameters, we simulate genotypes 16 and 18 'and all other high-risk
+HPV genotypes pooled together'. How does this 'pooling' work; is it some particular bit of code not addressed in the paper,
+or is it simply modelled as its own HPV genotype which is an alias for a set of high risk HPV genotypes??
+
