@@ -43,7 +43,7 @@ if __name__ == "__main__":#to allow for using several workers in parellell
         datafiles=datafiles,
         total_trials=700, n_workers=9, 
         keep_db=True, #for some reason there is a bug where if i set keep_db to its default value of false, i get a WinError 32 (the process cannot access the file because it is being used by another process) relating to line 431 of calibration.py
-        name="hpvsim_calibration_5" #to keep track of my calibrations
+        name="hpvsim_calubration_6" #to keep track of my calibrations
     )
     calib.calibrate(die=True)
     calib.plot(res_to_plot=4);

@@ -18,6 +18,7 @@ def init_immunity(sim, create=True):
 
     # Pull out all of the circulating genotypes for cross-immunity
     ng = sim['n_genotypes']
+    
 
     # Pull out all the unique vaccine products
     vx_intvs = [x for x in sim['interventions'] if isinstance(x, hpi.BaseVaccination)]

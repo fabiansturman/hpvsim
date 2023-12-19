@@ -2165,4 +2165,3 @@ class Layer(FlexDict):
         self['m'][inds]   = np.array(hpu.choose_r(max_n=n_agents, n=n_new), dtype=hpd.default_int)
         self['beta'][inds] = np.ones(n_new, dtype=hpd.default_float)
         return
-
