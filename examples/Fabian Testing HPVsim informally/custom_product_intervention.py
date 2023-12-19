@@ -29,7 +29,7 @@ if __name__ == "__main__":
 
 
     #Vaccination products (vx) are defined by:
-    fabians_vx_data = pd.DataFrame({'name':'Fabian\'s vaccine ',
+    fabians_vx_data = pd.DataFrame({'name':'Fabian\'s vaccine that is just bivalent (just limited to hpv16 and hpv18 but you could type the rest in and get full bivalent)',
                                     'genotype':['hpv16', 'hpv18'],
                                     'rel_imm':[0.95,0.95]
                                     })
@@ -38,7 +38,7 @@ if __name__ == "__main__":
                         imm_init={'dist':'normal', 'par1':0.9, 'par2':0.03} #samples peak immunity from a distribution as defined in the list - see utils.sample for more info
                             )
 
-    fabians_followup_vx_data = pd.DataFrame({'name':'Fabian\'s vaccine that is just bivalent really',
+    fabians_followup_vx_data = pd.DataFrame({'name':'Fabian\'s vaccine ',
                                     'genotype':['hpv16', 'hpv18'], #only need to specifify the genotypes that matter for the vaccine!
                                     'rel_imm':[1,1] #defining immunity as fixed values in the dataframe
                                     })
