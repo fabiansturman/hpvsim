@@ -25,6 +25,8 @@ def import_optuna():
         raise ModuleNotFoundError(errormsg)
     return op
 
+class UncalibratedException(Exception):
+    pass
 
 class Calibration(sc.prettyobj):
     '''
@@ -349,7 +351,7 @@ class Calibration(sc.prettyobj):
         return pars
 
     def run_trial(self, trial, save=True):
-        ''' Define the objective for Optuna '''
+        ''' Define the objective for Optuna ''' #TODO: Generalise to multiple timepoints,and probs make a function that checks the fit of a model at a given timepoint, and then create a function which computes the fit *up to* a given timepoint instead, and then use this to implement reporting of intermediate values, and early stopping, within our sim. This would require a way to do 'callback functions' within the running of a sim, called back at every nth time jump (or maybe every time jump? but probably sticking to every nth timejumpo helps speed it up as calcualtion of the cumulative goodness of fit won't be the easiest thing in the world!)
         if self.genotype_pars is not None:
             genotype_pars = self.trial_to_sim_pars(self.genotype_pars, trial)
         else:
@@ -755,8 +757,20 @@ class Calibration(sc.prettyobj):
 
         return hppl.tidy_up(fig, do_save=do_save, fig_path=fig_path, do_show=do_show, args=all_args)
     
-    def plot_learning_curve(self):
+    def plot_learning_curve(self, filename: str = None):
         '''
-        Plot the learning curve for our most recent calibration
+        Plot the learning curve for our most recent calibration.
+
+        Pre: calibated
+
+        Args:
+            filename (str): filename to which to save the learning curve (if left as None, curve is only shown to the user and not saved)
         '''
-        self.learning_curve.show()
+        if not self.calibrated:
+            raise UncalibratedException("Cannot plot learning curve without first calibrating a simulation. First call the calibrate function on this object.")
+
+        self.learning_curve.show() #this plot is defined in the calibrate function
+
+        if filename is not None:
+            self.learning_curve.write_image(filename)
+

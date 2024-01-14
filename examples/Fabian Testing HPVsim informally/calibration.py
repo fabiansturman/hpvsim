@@ -14,7 +14,7 @@ if __name__ == "__main__":#to allow for using several workers in parellell
                 start=1980,
                 end=2023, 
                 dt=0.25, 
-                location='nigeria', #united kingdom
+                location='united kingdom', #united kingdom
                 genotypes=[16, 18, 'hi5'])
     sim = hpv.Sim(pars)
     #print(f"Simulation's parameter keys: <{sim.pars.keys()}>")
@@ -43,11 +43,11 @@ if __name__ == "__main__":#to allow for using several workers in parellell
     )
 
     # List the datafiles that contain data that we wish to compare the model to:
-    datafiles=[ 'docs\\tutorials\\nigeria_cancer_cases.csv',
-                'docs\\tutorials\\nigeria_cancer_types.csv'
-       # 'fabiandata\\calib14jan23\\cancer_deaths.csv',
-        #       'fabiandata\\calib14jan23\\new_cervical_cancer_cases.csv',
-         #      'fabiandata\\calib14jan23\\genotype_distrib_cancer.csv'
+    datafiles=[ #'docs\\tutorials\\nigeria_cancer_cases.csv',
+               # 'docs\\tutorials\\nigeria_cancer_types.csv'
+        'fabiandata\\calib14jan23\\cancer_deaths.csv',
+               'fabiandata\\calib14jan23\\new_cervical_cancer_cases.csv',
+               'fabiandata\\calib14jan23\\genotype_distrib_cancer.csv'
                ]
 
     # List extra results that we don't have data on, but wish to include in the
@@ -61,10 +61,10 @@ if __name__ == "__main__":#to allow for using several workers in parellell
         genotype_pars=genotype_pars,
         extra_sim_result_keys=results_to_plot,
         datafiles=datafiles,
-        total_trials=20, n_workers=20, 
+        total_trials=1000, n_workers=20, 
         keep_db=True, #for some reason there is a bug where if i set keep_db to its default value of false, i get a WinError 32 (the process cannot access the file because it is being used by another process) relating to line 431 of calibration.py
-        name="CalibrationRawResults\\hpvsim_calubration_14jan24_37"
+        name="CalibrationRawResults\\hpvsim_calubration_14jan24_43"
     )
     calib.calibrate(die=True)
-    calib.plot(res_to_plot=10) #plots the 10 (best??) results
     calib.plot_learning_curve()
+    calib.plot(res_to_plot=10) #plots the 10 (best??) results
