@@ -110,21 +110,21 @@ class Calibration(sc.prettyobj):
         for datafile in datafiles:
             self.target_data.append(hpm.load_data(datafile))
 
-        sim_results = sc.objdict()
-        age_result_args = sc.objdict()
+        sim_results = sc.objdict()      #instantiates an empty instance of sciris.objdict, which is a module in Python that provides a dictionary-like object with attribute-style access (it is a subclass of the build-in dict class).
+        age_result_args = sc.objdict()  #[is age_result_args data then combined into sim_results somehow???]  sim_results contains data to fit to which is not split by age, while age_result_args contains data to fit to which is split by age 
 
-        # Go through each of the target keys and determine how we are going to get the results from sim
-        for targ in self.target_data:
-            targ_keys = targ.name.unique()
+        # *Go through each of the target keys and determine how we are going to get the results from sim*
+        for targ in self.target_data: #iterates through each DataFrame in the self.targetdata list, i.e. targ is effectively one of the parameters we want to fit
+            targ_keys = targ.name.unique() #targ.name gets each row's value in the *name* column of our dataframe, indexed by row number. Then targ.name.unique() gets us a list of all the distinct values in the *name* column; this needs to only have 1 value so that each dataframe fits to only 1 kind of targetdata
             if len(targ_keys) > 1:
                 errormsg = f'Only support one set of targets per datafile, {len(targ_keys)} provided'
                 raise ValueError(errormsg)
-            if 'age' in targ.columns:
-                age_result_args[targ_keys[0]] = sc.objdict(
-                    datafile=sc.dcp(targ),
-                    compute_fit=True,
+            if 'age' in targ.columns: #this checks whether the results presented in our datafile are also seperated by age
+                age_result_args[targ_keys[0]] = sc.objdict(  #At this point in code execution, we know targ_keys is a singleton list. e.g. if targ_keys = ['cancers'], then we are setting age_result_args['cancers'] to be a dictionary containing...
+                    datafile=sc.dcp(targ), #...a deep copy of our targetdata dataframe
+                    compute_fit=True, #we are computing a fit for these age results (is this because age_result_args is a dictionary with all possible target keys as keys, but of course we are only fitting those for which we have data??)
                 )
-            else:
+            else: #in this case, the data in targ is not split by age, so we add it to sim_results
                 sim_results[targ_keys[0]] = sc.objdict(
                     data=sc.dcp(targ)
                 )
@@ -165,11 +165,11 @@ class Calibration(sc.prettyobj):
 
     def run_sim(self, calib_pars=None, genotype_pars=None, hiv_pars=None, label=None, return_sim=False):
         ''' Create and run a simulation '''
-        sim = sc.dcp(self.sim)
+        sim = sc.dcp(self.sim) #Creates a deep copy of the provided simulation object, this is what we will be dealing with
         if label: sim.label = label
 
-        new_pars = self.get_full_pars(sim=sim, calib_pars=calib_pars, genotype_pars=genotype_pars, hiv_pars=hiv_pars)
-        sim.update_pars(new_pars)
+        new_pars = self.get_full_pars(sim=sim, calib_pars=calib_pars, genotype_pars=genotype_pars, hiv_pars=hiv_pars) #Get values for our adjustable parameters from optuna ...
+        sim.update_pars(new_pars)        #... and then update our sim with our new values for the adjustable parameters
         sim.initialize(reset=True, init_analyzers=False) # Necessary to reinitialize the sim here so that the initial infections get the right parameters
 
         # Run the sim
@@ -371,7 +371,7 @@ class Calibration(sc.prettyobj):
             else:
                 model_output = sim.results[rkey][:,self.sim_results[rkey].timepoints[0]]
             diffs = self.sim_results[rkey].data.value - model_output
-            gofs = hpm.compute_gof(self.sim_results[rkey].data.value, model_output)
+            gofs = hpm.compute_gof(self.sim_results[rkey].data.value, model_output) #computes the goodness of fit of the model, using the highly customizable compute_gof function in misc.py 
             losses = gofs * self.sim_results[rkey].weights
             mismatch = losses.sum()
             sim.fit += mismatch
@@ -402,7 +402,7 @@ class Calibration(sc.prettyobj):
         else:
             op.logging.set_verbosity(op.logging.ERROR)
         study = op.load_study(storage=self.run_args.storage, study_name=self.run_args.name, sampler = self.run_args.sampler)
-        output = study.optimize(self.run_trial, n_trials=self.run_args.n_trials, callbacks=None)
+        output = study.optimize(self.run_trial, n_trials=self.run_args.n_trials, callbacks=None, show_progress_bar=True) #self.run_trial is our objective function (i.e. will take our study and use optuna's suggested value to get us a goodness-of-fit value which is returned). Have set the progress bar to be shown here, as it does give us a better idea on our consolve where a given worker is at.
         return output
 
 
@@ -445,7 +445,7 @@ class Calibration(sc.prettyobj):
             raise NotImplementedError('Implemented but does not work')
         else:
             sampler = None
-        output = op.create_study(storage=self.run_args.storage, study_name=self.run_args.name, sampler=sampler)
+        output = op.create_study(storage=self.run_args.storage, study_name=self.run_args.name, sampler=sampler) #No pruner is specified, so by default OPtuna uses the MedianPruner (according to its documentation)
         return output
 
 
@@ -473,8 +473,8 @@ class Calibration(sc.prettyobj):
         self.run_args.update(kwargs) # Update optuna settings
 
         # Run the optimization
-        t0 = sc.tic()
-        self.make_study()
+        t0 = sc.tic() #together with sc.toc() this will calculate how long the optimisation took
+        self.make_study() #we don't need to bother getting the returned value from this function; the created study is stored, and accessible from, our saved database file. Our workers will acces it through this.
         self.run_workers()
         study = op.load_study(storage=self.run_args.storage, study_name=self.run_args.name, sampler = self.run_args.sampler)
         self.best_pars = sc.objdict(study.best_params)
@@ -520,6 +520,8 @@ class Calibration(sc.prettyobj):
         self.calibrated = True
         if not self.run_args.keep_db:
             self.remove_db()
+
+        print(f"Calibration took {self.elapsed} seconds")
 
         return self
 
@@ -596,7 +598,7 @@ class Calibration(sc.prettyobj):
 
         # Import Seaborn here since slow
         if sc.isstring(plot_type) and plot_type.startswith('sns'):
-            import seaborn as sns
+            import seaborn as sns 
             if plot_type.split('.')[1]=='boxplot':
                 extra_args=dict(boxprops=dict(alpha=.3), showfliers=False)
             else: extra_args = dict()
