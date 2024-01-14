@@ -61,9 +61,10 @@ if __name__ == "__main__":#to allow for using several workers in parellell
         genotype_pars=genotype_pars,
         extra_sim_result_keys=results_to_plot,
         datafiles=datafiles,
-        total_trials=20, n_workers=1, 
+        total_trials=20, n_workers=20, 
         keep_db=True, #for some reason there is a bug where if i set keep_db to its default value of false, i get a WinError 32 (the process cannot access the file because it is being used by another process) relating to line 431 of calibration.py
-        name="CalibrationRawResults\\hpvsim_calubration_14jan24_31"
+        name="CalibrationRawResults\\hpvsim_calubration_14jan24_37"
     )
     calib.calibrate(die=True)
-    calib.plot(res_to_plot=4);
+    calib.plot(res_to_plot=10) #plots the 10 (best??) results
+    calib.plot_learning_curve()

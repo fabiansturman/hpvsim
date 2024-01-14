@@ -104,6 +104,7 @@ class Calibration(sc.prettyobj):
         self.die            = die
         self.verbose        = verbose
         self.calibrated     = False
+        self.learning_curve = None                     #Assigned a value once self.calibrated = True
 
         # Create age_results intervention
         self.target_data = []
@@ -159,6 +160,7 @@ class Calibration(sc.prettyobj):
                 self.result_args[rkey].color = self.sim.results[rkey].color
         # Temporarily store a filename
         self.tmp_filename = 'tmp_calibration_%05i.obj'
+
 
         return
 
@@ -391,6 +393,8 @@ class Calibration(sc.prettyobj):
             filename = self.tmp_filename % trial.number
             sc.save(filename, results)
 
+        #Report values back to the 
+
         return sim.fit
 
 
@@ -402,7 +406,8 @@ class Calibration(sc.prettyobj):
         else:
             op.logging.set_verbosity(op.logging.ERROR)
         study = op.load_study(storage=self.run_args.storage, study_name=self.run_args.name, sampler = self.run_args.sampler)
-        output = study.optimize(self.run_trial, n_trials=self.run_args.n_trials, callbacks=None, show_progress_bar=True) #self.run_trial is our objective function (i.e. will take our study and use optuna's suggested value to get us a goodness-of-fit value which is returned). Have set the progress bar to be shown here, as it does give us a better idea on our consolve where a given worker is at.
+        output = study.optimize(self.run_trial, n_trials=self.run_args.n_trials, callbacks=None) #self.run_trial is our objective function (i.e. will take our study and use optuna's suggested value to get us a goodness-of-fit value which is returned). 
+        
         return output
 
 
@@ -445,7 +450,7 @@ class Calibration(sc.prettyobj):
             raise NotImplementedError('Implemented but does not work')
         else:
             sampler = None
-        output = op.create_study(storage=self.run_args.storage, study_name=self.run_args.name, sampler=sampler) #No pruner is specified, so by default OPtuna uses the MedianPruner (according to its documentation)
+        output = op.create_study(storage=self.run_args.storage, study_name=self.run_args.name, sampler=sampler) 
         return output
 
 
@@ -456,6 +461,7 @@ class Calibration(sc.prettyobj):
         Args:
             calib_pars (dict): if supplied, overwrite stored calib_pars
             verbose (bool): whether to print output from each trial
+            plot_intermediate: whether to output a plot of all the intermediate trial values as the calibration progressed
             kwargs (dict): if supplied, overwrite stored run_args (n_trials, n_workers, etc.)
         '''
         op = import_optuna()
@@ -479,6 +485,10 @@ class Calibration(sc.prettyobj):
         study = op.load_study(storage=self.run_args.storage, study_name=self.run_args.name, sampler = self.run_args.sampler)
         self.best_pars = sc.objdict(study.best_params)
         self.elapsed = sc.toc(t0, output=True)
+
+        #Update the plot of learning curve for this calibration object
+        self.learning_curve = op.visualization.plot_optimization_history(study)
+
 
         # Collect analyzer results
         # Load a single sim
@@ -514,10 +524,10 @@ class Calibration(sc.prettyobj):
 
         # Compare the results
         self.initial_pars, self.par_bounds = self.sim_to_sample_pars()
-        self.parse_study(study)
+        self.parse_study(study) #parses the study into a dataframe
 
         # Tidy up
-        self.calibrated = True
+        self.calibrated = True #i.e. this calibration object has now been used for a calibration
         if not self.run_args.keep_db:
             self.remove_db()
 
@@ -744,3 +754,9 @@ class Calibration(sc.prettyobj):
                 plot_count += 1
 
         return hppl.tidy_up(fig, do_save=do_save, fig_path=fig_path, do_show=do_show, args=all_args)
+    
+    def plot_learning_curve(self):
+        '''
+        Plot the learning curve for our most recent calibration
+        '''
+        self.learning_curve.show()
