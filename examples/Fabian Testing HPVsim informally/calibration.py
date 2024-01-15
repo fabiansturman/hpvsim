@@ -1,6 +1,8 @@
 # Import HPVsim
 import hpvsim as hpv
 
+rand_seed = 10
+
 if __name__ == "__main__":#to allow for using several workers in parellell
 
     #Define the interventions that will be presetn in the simulation, mimicking that found in the uk (kinda)
@@ -14,8 +16,10 @@ if __name__ == "__main__":#to allow for using several workers in parellell
                 start=1980,
                 end=2023, 
                 dt=0.25, 
-                location='united kingdom', #united kingdom
-                genotypes=[16, 18, 'hi5'])
+                location='nigeria', #united kingdom
+                genotypes=[16, 18, 'hi5'],
+                verbose = 0,
+                rand_seed = rand_seed)
     sim = hpv.Sim(pars)
     #print(f"Simulation's parameter keys: <{sim.pars.keys()}>")
 
@@ -24,7 +28,8 @@ if __name__ == "__main__":#to allow for using several workers in parellell
     # whereas those in the genotype_pars dictionary do. Both kinds are
     # given in the order [best, lower_bound, upper_bound].
     calib_pars = dict(
-            beta=[0.25, 0.010, 0.7],hpv_control_prob=[.2, 0, 1]
+            beta=[0.25, 0.010, 0.7],
+            hpv_control_prob=[.2, 0, 1]
         )
 
     genotype_pars = dict(
@@ -43,11 +48,11 @@ if __name__ == "__main__":#to allow for using several workers in parellell
     )
 
     # List the datafiles that contain data that we wish to compare the model to:
-    datafiles=[ #'docs\\tutorials\\nigeria_cancer_cases.csv',
-               # 'docs\\tutorials\\nigeria_cancer_types.csv'
-        'fabiandata\\calib14jan23\\cancer_deaths.csv',
-               'fabiandata\\calib14jan23\\new_cervical_cancer_cases.csv',
-               'fabiandata\\calib14jan23\\genotype_distrib_cancer.csv'
+    datafiles=[ 'docs\\tutorials\\nigeria_cancer_cases.csv',
+                'docs\\tutorials\\nigeria_cancer_types.csv'
+       # 'fabiandata\\calib14jan23\\cancer_deaths.csv',
+        #       'fabiandata\\calib14jan23\\new_cervical_cancer_cases.csv',
+         #      'fabiandata\\calib14jan23\\genotype_distrib_cancer.csv'
                ]
 
     # List extra results that we don't have data on, but wish to include in the
@@ -61,9 +66,10 @@ if __name__ == "__main__":#to allow for using several workers in parellell
         genotype_pars=genotype_pars,
         extra_sim_result_keys=results_to_plot,
         datafiles=datafiles,
-        total_trials=1000, n_workers=20, 
+        total_trials=1, n_workers=1, 
         keep_db=True, #for some reason there is a bug where if i set keep_db to its default value of false, i get a WinError 32 (the process cannot access the file because it is being used by another process) relating to line 431 of calibration.py
-        name="CalibrationRawResults\\hpvsim_calubration_14jan24_43"
+        name="CalibrationRawResults\\hpvsim_calubration_15jan24_29",
+        rand_seed = rand_seed #Keeping random seed constant for reproducibility (random seed is used for optuna runs)
     )
     calib.calibrate(die=True)
     calib.plot_learning_curve()

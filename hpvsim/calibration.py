@@ -43,26 +43,28 @@ class Calibration(sc.prettyobj):
     for more information.
 
     Args:
-        sim          (Sim)  : the simulation to calibrate
-        datafiles    (list) : list of datafile strings to calibrate to
-        calib_pars   (dict) : a dictionary of the parameters to calibrate of the format dict(key1=[best, low, high])
-        genotype_pars(dict) : a dictionary of the genotype-specific parameters to calibrate of the format dict(genotype=dict(key1=[best, low, high]))
-        hiv_pars     (dict) : a dictionary of the hiv-specific parameters to calibrate of the format dict(key1=[best, low, high])
-        extra_sim_results (list) : list of result strings to store
-        fit_args     (dict) : a dictionary of options that are passed to sim.compute_fit() to calculate the goodness-of-fit
-        par_samplers (dict) : an optional mapping from parameters to the Optuna sampler to use for choosing new points for each; by default, suggest_float
-        n_trials     (int)  : the number of trials per worker
-        n_workers    (int)  : the number of parallel workers (default: maximum
-        total_trials (int)  : if n_trials is not supplied, calculate by dividing this number by n_workers)
-        name         (str)  : the name of the database (default: 'hpvsim_calibration')
-        db_name      (str)  : the name of the database file (default: 'hpvsim_calibration.db')
-        keep_db      (bool) : whether to keep the database after calibration (default: false)
-        storage      (str)  : the location of the database (default: sqlite)
-        rand_seed    (int)  : if provided, use this random seed to initialize Optuna runs (for reproducibility)
-        label        (str)  : a label for this calibration object
-        die          (bool) : whether to stop if an exception is encountered (default: false)
-        verbose      (bool) : whether to print details of the calibration
-        kwargs       (dict) : passed to hpv.Calibration()
+        sim          (Sim)      : the simulation to calibrate
+        datafiles    (list)     : list of datafile strings to calibrate to
+        calib_pars   (dict)     : a dictionary of the parameters to calibrate of the format dict(key1=[best, low, high])
+        genotype_pars(dict)     : a dictionary of the genotype-specific parameters to calibrate of the format dict(genotype=dict(key1=[best, low, high]))
+        hiv_pars     (dict)     : a dictionary of the hiv-specific parameters to calibrate of the format dict(key1=[best, low, high])
+        extra_sim_results (list): list of result strings to store
+        fit_args     (dict)     : a dictionary of options that are passed to sim.compute_fit() to calculate the goodness-of-fit
+        par_samplers (dict)     : an optional mapping from parameters to the Optuna sampler to use for choosing new points for each; by default, suggest_float
+        n_trials     (int)      : the number of trials per worker
+        n_workers    (int)      : the number of parallel workers (default: maximum
+        total_trials (int)      : if n_trials is not supplied, calculate by dividing this number by n_workers)
+        name         (str)      : the name of the database (default: 'hpvsim_calibration')
+        db_name      (str)      : the name of the database file (default: 'hpvsim_calibration.db')
+        keep_db      (bool)     : whether to keep the database after calibration (default: false)
+        storage      (str)      : the location of the database (default: sqlite)
+        rand_seed    (int)      : if provided, use this random seed to initialize Optuna runs (for reproducibility)
+        sampler_type (str)      : choice of Optuna sampler type. Default value is "tpe". Options: ["random", "grid", "tpe", "cmaes", "nsgaii", "qmc", "bruteforce"]
+        sampler_args (dict)     : a dictionary of arguments to pas to the constructor of our sampler
+        label        (str)      : a label for this calibration object
+        die          (bool)     : whether to stop if an exception is encountered (default: false)
+        verbose      (bool)     : whether to print details of the calibration
+        kwargs       (dict)     : passed to hpv.Calibration()
 
     Returns:
         A Calibration object
@@ -82,7 +84,7 @@ class Calibration(sc.prettyobj):
 
     def __init__(self, sim, datafiles, calib_pars=None, genotype_pars=None, hiv_pars=None, fit_args=None, extra_sim_result_keys=None, 
                  par_samplers=None, n_trials=None, n_workers=None, total_trials=None, name=None, db_name=None, estimator=None,
-                 keep_db=None, storage=None, rand_seed=None, sampler=None, label=None, die=False, verbose=True):
+                 keep_db=None, storage=None, rand_seed=None, sampler_type=None, sampler_args=None, label=None, die=False, verbose=True):
 
         import multiprocessing as mp # Import here since it's also slow
 
@@ -94,8 +96,21 @@ class Calibration(sc.prettyobj):
         if keep_db   is None: keep_db   = False
         if storage   is None: storage   = f'sqlite:///{db_name}'
         if total_trials is not None: n_trials = int(np.ceil(total_trials/n_workers))
+
+        if sampler_type is not None:
+            if sampler_type not in ["random", "grid", "tpe", "cmaes", "nsgaii", "qmc", "bruteforce"]:
+                raise Exception('Sampler type is not an accepted value. Accepted values are ["random", "grid", "tpe", "cmaes", "nsgaii", "qmc", "bruteforce"].')
+            else:
+                self.sampler_type = sampler_type
+        else:
+            self.sampler_type = "tpe" #this is consistent with the default sampler type for Optuna, which is TPE
+        if sampler_args is None:
+            self.sampler_args = dict()
+        else:
+            self.sampler_args = sampler_args
+        
         self.run_args   = sc.objdict(n_trials=int(n_trials), n_workers=int(n_workers), name=name, db_name=db_name,
-                                     keep_db=keep_db, storage=storage, rand_seed=rand_seed, sampler=sampler)
+                                     keep_db=keep_db, storage=storage, rand_seed=rand_seed, sampler=None)
 
         # Handle other inputs
         self.label          = label
@@ -350,7 +365,9 @@ class Calibration(sc.prettyobj):
                     raise AttributeError(errormsg) from E
             else:
                 sampler_fn = trial.suggest_float
-            sc.setnested(pars, list(key), sampler_fn(sampler_key, low, high, step=step))
+            value = sampler_fn(sampler_key, low, high, step=step)
+            #print(f"Optuna has sampled us the value {value} for the key {sampler_key}")
+            sc.setnested(pars, list(key), value)
         return pars
 
     def run_trial(self, trial, save=True):
@@ -421,6 +438,7 @@ class Calibration(sc.prettyobj):
         if self.run_args.n_workers > 1: # Normal use case: run in parallel
             output = sc.parallelize(self.worker, iterarg=self.run_args.n_workers)
         else: # Special case: just run one
+          #  print("Running just a single worker") 
             output = [self.worker()]
         return output
 
@@ -449,13 +467,20 @@ class Calibration(sc.prettyobj):
         op = import_optuna()
         if not self.run_args.keep_db:
             self.remove_db()
+        
         if self.run_args.rand_seed is not None:
-            sampler = op.samplers.RandomSampler(self.run_args.rand_seed)
-            sampler.reseed_rng()
-            raise NotImplementedError('Implemented but does not work')
-        else:
-            sampler = None
-        output = op.create_study(storage=self.run_args.storage, study_name=self.run_args.name, sampler=sampler) 
+            self.sampler_args['seed'] = self.run_args.rand_seed     #To use a given random seed for Optuna's parameter suggestion, add it to the constructor's parameter list
+
+        match self.sampler_type:
+            case "random":      self.run_args.sampler = op.samplers.RandomSampler(**self.sampler_args)        #Unpack the dictionary to be used as standard function arguments
+            case "grid":        self.run_args.sampler = op.samplers.GridSampler(**self.sampler_args)
+            case "tpe":         self.run_args.sampler = op.samplers.TPESampler(**self.sampler_args)
+            case "cmaes":       self.run_args.sampler = op.samplers.CmaEsSampler(**self.sampler_args)
+            case "nsgaii":      self.run_args.sampler = op.samplers.NSGAIISampler(**self.sampler_args)
+            case "qmc":         self.run_args.sampler = op.samplers.QMCSampler(**self.sampler_args)
+            case "bruteforce":  self.run_args.sampler = op.samplers.BruteForceSampler(**self.sampler_args)
+
+        output = op.create_study(storage=self.run_args.storage, study_name=self.run_args.name, sampler=self.run_args.sampler) #storage gives us the database URL where our memory will be
         return output
 
 
@@ -481,7 +506,7 @@ class Calibration(sc.prettyobj):
         if (self.calib_pars is None) and (self.genotype_pars is None) and (self.hiv_pars is None):
             errormsg = 'You must supply calibration parameters (calib_pars or genotype_pars) either when creating the calibration object or when calling calibrate().'
             raise ValueError(errormsg)
-        self.run_args.update(kwargs) # Update optuna settings
+        self.run_args.update(kwargs) # Update optuna settings (by updating the dictionary that holds the data we will pass)
 
         # Run the optimization
         t0 = sc.tic() #together with sc.toc() this will calculate how long the optimisation took
