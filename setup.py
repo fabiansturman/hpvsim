@@ -46,5 +46,7 @@ setup(
         'matplotlib',
         'seaborn',
         'optuna',
+        'plotly', #TODO: fabian-  not yet tested that this imports plotly fine, as I installed this manually with pip in command line
+        'kaleido'  #TODO: fabian-  not yet tested that this installs kaleido fine, as I installed this manually with pip in command line
     ],
 )

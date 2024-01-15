@@ -26,6 +26,9 @@ def import_optuna():
     return op
 
 class UncalibratedException(Exception):
+    '''
+    A type of exception which can be thrown when we try to do things with an uncalibrated calibration object which can only be done with a calibrated one 
+    '''
     pass
 
 class Calibration(sc.prettyobj):
