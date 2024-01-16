@@ -60,7 +60,7 @@ class Calibration(sc.prettyobj):
         storage      (str)      : the location of the database (default: sqlite)
         rand_seed    (int)      : if provided, use this random seed to initialize Optuna runs (for reproducibility)
         sampler_type (str)      : choice of Optuna sampler type. Default value is "tpe". Options: ["random", "grid", "tpe", "cmaes", "nsgaii", "qmc", "bruteforce"]
-        sampler_args (dict)     : a dictionary of arguments to pas to the constructor of our sampler
+        sampler_args (dict)     : argument-value pairs passed to the sampler's constructor. Refer to optuna documentation for relevant arguments for a given sampler type; https://optuna.readthedocs.io/en/stable/reference/samplers/index.html 
         label        (str)      : a label for this calibration object
         die          (bool)     : whether to stop if an exception is encountered (default: false)
         verbose      (bool)     : whether to print details of the calibration
@@ -100,17 +100,14 @@ class Calibration(sc.prettyobj):
         if sampler_type is not None:
             if sampler_type not in ["random", "grid", "tpe", "cmaes", "nsgaii", "qmc", "bruteforce"]:
                 raise Exception('Sampler type is not an accepted value. Accepted values are ["random", "grid", "tpe", "cmaes", "nsgaii", "qmc", "bruteforce"].')
-            else:
-                self.sampler_type = sampler_type
         else:
             self.sampler_type = "tpe" #this is consistent with the default sampler type for Optuna, which is TPE
         if sampler_args is None:
-            self.sampler_args = dict()
-        else:
-            self.sampler_args = sampler_args
+            sampler_args = dict()
         
         self.run_args   = sc.objdict(n_trials=int(n_trials), n_workers=int(n_workers), name=name, db_name=db_name,
-                                     keep_db=keep_db, storage=storage, rand_seed=rand_seed, sampler=None)
+                                     keep_db=keep_db, storage=storage, 
+                                     rand_seed=rand_seed, sampler_type=sampler_type, sampler_args=sampler_args)
 
         # Handle other inputs
         self.label          = label
@@ -420,14 +417,41 @@ class Calibration(sc.prettyobj):
         return sim.fit
 
 
-    def worker(self):
-        ''' Run a single worker '''
+    def make_sampler(self, seed_offset:int = 0):
+        '''Makes and returns a sampler according to the information in self.run_args. 
+           If seed_offset is not 0, adds it to the seed when creating the sampler'''
+        op = import_optuna()
+
+        #To use a given random seed for Optuna's parameter suggestion, add it to the constructor's parameter list
+        if self.run_args.rand_seed is not None:
+            self.run_args.sampler_args['seed'] = self.run_args.rand_seed + seed_offset
+
+        #Instantiate the desired sampler, unpacking the dictionary self.sampler_args to use as constructor arguments
+        match self.run_args.sampler_type:
+            case "random":      sampler = op.samplers.RandomSampler(**self.run_args.sampler_args)        
+            case "grid":        sampler = op.samplers.GridSampler(**self.run_args.sampler_args)
+            case "tpe":         sampler = op.samplers.TPESampler(**self.run_args.sampler_args)
+            case "cmaes":       sampler = op.samplers.CmaEsSampler(**self.run_args.sampler_args)
+            case "nsgaii":      sampler = op.samplers.NSGAIISampler(**self.run_args.sampler_args)
+            case "qmc":         sampler = op.samplers.QMCSampler(**self.run_args.sampler_args)
+            case "bruteforce":  sampler = op.samplers.BruteForceSampler(**self.run_args.sampler_args)
+        
+        return sampler
+    
+
+    def worker(self, id:int):
+        ''' Run a single worker.
+            pre: 1<=id<=self.run_args.n_workers && each worker has a distinct id
+        '''
         op = import_optuna()
         if self.verbose:
             op.logging.set_verbosity(op.logging.DEBUG)
         else:
             op.logging.set_verbosity(op.logging.ERROR)
-        study = op.load_study(storage=self.run_args.storage, study_name=self.run_args.name, sampler = self.run_args.sampler)
+
+        sampler = self.make_sampler(id) #Construct a sampler according to the data in self.run_args; we offset the seed by 'id' iff we are using a user-defined seed
+
+        study = op.load_study(storage=self.run_args.storage, study_name=self.run_args.name, sampler=sampler)
         output = study.optimize(self.run_trial, n_trials=self.run_args.n_trials, callbacks=None) #self.run_trial is our objective function (i.e. will take our study and use optuna's suggested value to get us a goodness-of-fit value which is returned). 
         
         return output
@@ -436,10 +460,10 @@ class Calibration(sc.prettyobj):
     def run_workers(self):
         ''' Run multiple workers in parallel '''
         if self.run_args.n_workers > 1: # Normal use case: run in parallel
-            output = sc.parallelize(self.worker, iterarg=self.run_args.n_workers)
+            worker_ids = list(range(1, self.run_args.n_workers+1))
+            output = sc.parallelize(self.worker, iterarg=worker_ids)
         else: # Special case: just run one
-          #  print("Running just a single worker") 
-            output = [self.worker()]
+            output = [self.worker(0)]
         return output
 
 
@@ -460,7 +484,7 @@ class Calibration(sc.prettyobj):
             if self.verbose:
                 print(f'Removed existing calibration {self.run_args.db_name}')
         return
-
+    
 
     def make_study(self):
         ''' Make a study, deleting one if it already exists '''
@@ -468,19 +492,9 @@ class Calibration(sc.prettyobj):
         if not self.run_args.keep_db:
             self.remove_db()
         
-        if self.run_args.rand_seed is not None:
-            self.sampler_args['seed'] = self.run_args.rand_seed     #To use a given random seed for Optuna's parameter suggestion, add it to the constructor's parameter list
+        sampler = self.make_sampler()
 
-        match self.sampler_type:
-            case "random":      self.run_args.sampler = op.samplers.RandomSampler(**self.sampler_args)        #Unpack the dictionary to be used as standard function arguments
-            case "grid":        self.run_args.sampler = op.samplers.GridSampler(**self.sampler_args)
-            case "tpe":         self.run_args.sampler = op.samplers.TPESampler(**self.sampler_args)
-            case "cmaes":       self.run_args.sampler = op.samplers.CmaEsSampler(**self.sampler_args)
-            case "nsgaii":      self.run_args.sampler = op.samplers.NSGAIISampler(**self.sampler_args)
-            case "qmc":         self.run_args.sampler = op.samplers.QMCSampler(**self.sampler_args)
-            case "bruteforce":  self.run_args.sampler = op.samplers.BruteForceSampler(**self.sampler_args)
-
-        output = op.create_study(storage=self.run_args.storage, study_name=self.run_args.name, sampler=self.run_args.sampler) #storage gives us the database URL where our memory will be
+        output = op.create_study(storage=self.run_args.storage, study_name=self.run_args.name, sampler=sampler) 
         return output
 
 
@@ -512,7 +526,7 @@ class Calibration(sc.prettyobj):
         t0 = sc.tic() #together with sc.toc() this will calculate how long the optimisation took
         self.make_study() #we don't need to bother getting the returned value from this function; the created study is stored, and accessible from, our saved database file. Our workers will acces it through this.
         self.run_workers()
-        study = op.load_study(storage=self.run_args.storage, study_name=self.run_args.name, sampler = self.run_args.sampler)
+        study = op.load_study(storage=self.run_args.storage, study_name=self.run_args.name, sampler = self.make_sampler())
         self.best_pars = sc.objdict(study.best_params)
         self.elapsed = sc.toc(t0, output=True)
 

@@ -1,7 +1,7 @@
 # Import HPVsim
 import hpvsim as hpv
 
-rand_seed = 10
+rand_seed = 11
 
 if __name__ == "__main__":#to allow for using several workers in parellell
 
@@ -66,10 +66,12 @@ if __name__ == "__main__":#to allow for using several workers in parellell
         genotype_pars=genotype_pars,
         extra_sim_result_keys=results_to_plot,
         datafiles=datafiles,
-        total_trials=1, n_workers=1, 
+        total_trials=100, n_workers=1, 
         keep_db=True, #for some reason there is a bug where if i set keep_db to its default value of false, i get a WinError 32 (the process cannot access the file because it is being used by another process) relating to line 431 of calibration.py
-        name="CalibrationRawResults\\hpvsim_calubration_15jan24_29",
-        rand_seed = rand_seed #Keeping random seed constant for reproducibility (random seed is used for optuna runs)
+        name="CalibrationRawResults\\hpvsim_calubration_15jan24_49",
+        rand_seed = rand_seed, #rand_seed, #Keeping random seed constant for reproducibility (random seed is used for optuna runs)
+        sampler_type = "tpe",       #Accepted values are  ["random", "grid", "tpe", "cmaes", "nsgaii", "qmc", "bruteforce"]
+        sampler_args = None # dict(multivariate=True, group=True, constant_liar=True)       # Refer to optuna documentation for relevant arguments for a given sampler type; https://optuna.readthedocs.io/en/stable/reference/samplers/index.html 
     )
     calib.calibrate(die=True)
     calib.plot_learning_curve()
