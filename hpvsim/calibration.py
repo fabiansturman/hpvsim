@@ -61,6 +61,7 @@ class Calibration(sc.prettyobj):
         rand_seed    (int)      : if provided, use this random seed to initialize Optuna runs (for reproducibility)
         sampler_type (str)      : choice of Optuna sampler type. Default value is "tpe". Options: ["random", "grid", "tpe", "cmaes", "nsgaii", "qmc", "bruteforce"]
         sampler_args (dict)     : argument-value pairs passed to the sampler's constructor. Refer to optuna documentation for relevant arguments for a given sampler type; https://optuna.readthedocs.io/en/stable/reference/samplers/index.html 
+        prune        (bool)     : whether or not to do pruning
         label        (str)      : a label for this calibration object
         die          (bool)     : whether to stop if an exception is encountered (default: false)
         verbose      (bool)     : whether to print details of the calibration
@@ -84,7 +85,9 @@ class Calibration(sc.prettyobj):
 
     def __init__(self, sim, datafiles, calib_pars=None, genotype_pars=None, hiv_pars=None, fit_args=None, extra_sim_result_keys=None, 
                  par_samplers=None, n_trials=None, n_workers=None, total_trials=None, name=None, db_name=None, estimator=None,
-                 keep_db=None, storage=None, rand_seed=None, sampler_type=None, sampler_args=None, label=None, die=False, verbose=True):
+                 keep_db=None, storage=None, 
+                 rand_seed=None, sampler_type=None, sampler_args=None, prune=True,
+                 label=None, die=False, verbose=True):
 
         import multiprocessing as mp # Import here since it's also slow
 
@@ -97,17 +100,18 @@ class Calibration(sc.prettyobj):
         if storage   is None: storage   = f'sqlite:///{db_name}'
         if total_trials is not None: n_trials = int(np.ceil(total_trials/n_workers))
 
+
         if sampler_type is not None:
             if sampler_type not in ["random", "grid", "tpe", "cmaes", "nsgaii", "qmc", "bruteforce"]:
                 raise Exception('Sampler type is not an accepted value. Accepted values are ["random", "grid", "tpe", "cmaes", "nsgaii", "qmc", "bruteforce"].')
         else:
-            self.sampler_type = "tpe" #this is consistent with the default sampler type for Optuna, which is TPE
+            sampler_type = "tpe" #this is consistent with the default sampler type for Optuna, which is TPE
         if sampler_args is None:
             sampler_args = dict()
         
         self.run_args   = sc.objdict(n_trials=int(n_trials), n_workers=int(n_workers), name=name, db_name=db_name,
                                      keep_db=keep_db, storage=storage, 
-                                     rand_seed=rand_seed, sampler_type=sampler_type, sampler_args=sampler_args)
+                                     rand_seed=rand_seed, sampler_type=sampler_type, sampler_args=sampler_args, prune=prune)
 
         # Handle other inputs
         self.label          = label
@@ -153,7 +157,8 @@ class Calibration(sc.prettyobj):
             self.sim['model_hiv'] = True # if calibrating HIV parameters, make sure model is running HIV
         self.sim.initialize()
         for rkey in sim_results.keys():
-            sim_results[rkey].timepoints = sim.get_t(sim_results[rkey].data.year.unique()[0], return_date_format='str')[0]//sim.resfreq
+            sim_results[rkey].timepoints = sim.get_t(sim_results[rkey].data.year.unique()[0], return_date_format='str')[0]//sim.resfreq 
+            #to change to be a list of ALL the unique timepoints relevant for that datafile, i need to turn unique()[0] to just unique()
             if 'weights' not in sim_results[rkey].data.columns:
                 sim_results[rkey].weights = np.ones(len(sim_results[rkey].data))
         self.age_results_keys = age_result_args.keys()
@@ -178,28 +183,79 @@ class Calibration(sc.prettyobj):
         # Temporarily store a filename
         self.tmp_filename = 'tmp_calibration_%05i.obj'
 
+        
+        #Populate a list of all the years for which we have data that is split by age, and then all the years for which we have data that is not split by age
+        self.age_result_years = []  #all the years for which we have data which is split up by age
+        self.sim_result_years = []  #all the years for which we have data which is not split up by age
+        self.years            = []  #all the years for which we have data, either split by age or not
+        for targ in self.target_data:
+            targ_years = list(targ.year.unique())
+            if 'age' in targ.columns:                                       #this checks whether the results presented in our datafile are also seperated by age
+                self.age_result_years += targ_years
+                self.age_result_years = list(set(self.age_result_years))
+            else: 
+                self.sim_result_years += targ_years
+                self.sim_result_years = list(set(self.sim_result_years))
+
+
+        self.years = list(set(self.age_result_years + self.sim_result_years))
+
+        #Set the self.sim_end_year instance variable to stop wasteful tail-running of our sim
+        if sim['end'] > max(self.years):                #If our simulation is going on for too long, set self.sim_end_year s.t. when we run our sim, we stop earlier...
+            self.sim_end_year = max(self.years)
+        else:
+            self.sim_end_year = sim['end']
+            #... and the alternate case (sim['end'] < max(self.years) is not possible, as index out of bounds error will be thrown when validating our variables; see analysis.py's validate_variables function)
 
         return
 
 
-    def run_sim(self, calib_pars=None, genotype_pars=None, hiv_pars=None, label=None, return_sim=False):
+    def run_sim(self, trial, calib_pars=None, genotype_pars=None, hiv_pars=None, label=None, return_sim=False):
         ''' Create and run a simulation '''
+        op = import_optuna()
+
         sim = sc.dcp(self.sim) #Creates a deep copy of the provided simulation object, this is what we will be dealing with
+        
+        sim['end'] = self.sim_end_year
         if label: sim.label = label
 
         new_pars = self.get_full_pars(sim=sim, calib_pars=calib_pars, genotype_pars=genotype_pars, hiv_pars=hiv_pars) #Get values for our adjustable parameters from optuna ...
         sim.update_pars(new_pars)        #... and then update our sim with our new values for the adjustable parameters
         sim.initialize(reset=True, init_analyzers=False) # Necessary to reinitialize the sim here so that the initial infections get the right parameters
 
+        #define the callback function which will be called each year by our sim, to determine whether it should be pruned
+        def callback(current_year):
+  #          if current_year in self.years: #For testing; printing out the itnermediate goodness-of-fit values that have been computed
+   #             print()
+    #            print(f"Results for year {current_year}")
+     #           print(f"    Age results gof: {self.get_cumulative_age_results_gof(sim,current_year)}")
+      #          print(f"    Sim results gof: {self.get_cumulative_sim_results_gof(sim,current_year)}")
+       #         print(f"    Total gof: {self.get_cumulative_gof(sim,current_year)}")
+
+            if current_year in self.years:
+                #We only are able to consider pruning if we can compare our model's output to at least part of our dataset 
+                intermediate_gof = self.get_cumulative_gof(sim,current_year)
+                trial.report(intermediate_gof, current_year)
+
+                if trial.should_prune():
+                    raise op.TrialPruned()
+                
+
+        
         # Run the sim
         try:
-            sim.run()
+            if self.run_args.prune:
+                sim.run(callback=callback, callback_annual = True)
+            else:
+                sim.run()
             if return_sim:
                 return sim
             else:
                 return sim.fit
 
         except Exception as E:
+            if isinstance(E, op.TrialPruned): #catch pruning and throw it on
+                raise op.TrialPruned()
             if self.die:
                 raise E
             else:
@@ -367,8 +423,61 @@ class Calibration(sc.prettyobj):
             sc.setnested(pars, list(key), value)
         return pars
 
+    def get_cumulative_sim_results_gof(self, sim, year_up_to):
+        '''
+        Computes and returns the goodness of fit of our sim against any sim_results for which we have data (i.e. any data which is not split by age), up to a given year
+        '''
+        #TODO: as in the existing non-cumulative version of this process, this is currently for a single timepoint per rkey and should be generalised
+        fit = 0
+
+        results = sim.compute_intermediate_states()
+
+        for rkey in self.sim_results:
+            timepoint = self.sim_results[rkey].timepoints[0]
+            year = timepoint * (sim.resfreq * sim["dt"]) + sim["start"] #sim.resfreq * sim["dt"] = time in years between each timepoint
+
+            if year < year_up_to + 1: #e.g. if the timepoint is such that our year is 1998.8,then we want to consider this data if year_up_to==1998, as we are stopping beyond 1998 
+                if sim.results[rkey][:].ndim==1:
+                    model_output = results[rkey][timepoint] 
+                else:
+                    model_output = results[rkey][:,timepoint] #e.g. if we have several genotypes, this gets us the rkey result at index timepoint[0] for each genotype in a list 
+
+                gofs = hpm.compute_gof(self.sim_results[rkey].data.value, model_output) #computes the goodness of fit of the model, using the highly customizable compute_gof function in misc.py 
+                losses = gofs * self.sim_results[rkey].weights   #each row in an Dataframe containing data that we want to fit to is by default weighted 1, but if we want to weight more heavily for certain quantities (which would mean we care more about fitting those quantities than other, lesser-weighted ones), we can add a 'weight' column to our csv files and just weight our rows as we desire
+                mismatch = losses.sum()
+                fit += mismatch   #this first declares, and then assigns values to, an instance variable sim.fit, which accumulates the objective function value for this trial
+        
+        return fit
+    
+
+    def get_cumulative_age_results_gof(self, sim, year_up_to):
+        '''
+        Computes and returns the goodness of fit of our sim against any age results for which we have data (i.e. any data which is split by age), up to a given year
+        '''
+        fit = 0
+        for analyzer in sim.analyzers:
+            if isinstance(analyzer, hpa.Analyzer):
+                fit += analyzer.cumulative_fit(self,year_up_to)
+
+        return fit
+
+    def get_cumulative_gof(self, sim, year_up_to):
+        '''
+        Computes and returns the goodness of fit of the provided sim against all data we have avaliable, up to the given year
+        '''
+        fit = 0  #TODO: maybe use np.inf instead? optuna documentation says it supports all float-like types for intermediate value reporting and specifies numpy.flaot32 as an example, but does it support this particular constnat of the type??
+
+        if year_up_to >= min(self.age_result_years):            #If we have at least some age result data at or before the given end year, then compute its gof
+            fit += self.get_cumulative_age_results_gof(sim, year_up_to)
+        if year_up_to >= min(self.sim_result_years):            ##If we have at least some sim result data at or before the given end year, then compute its gof
+            fit += self.get_cumulative_sim_results_gof(sim, year_up_to)
+
+        return fit
+
+
     def run_trial(self, trial, save=True):
-        ''' Define the objective for Optuna ''' #TODO: Generalise to multiple timepoints,and probs make a function that checks the fit of a model at a given timepoint, and then create a function which computes the fit *up to* a given timepoint instead, and then use this to implement reporting of intermediate values, and early stopping, within our sim. This would require a way to do 'callback functions' within the running of a sim, called back at every nth time jump (or maybe every time jump? but probably sticking to every nth timejumpo helps speed it up as calcualtion of the cumulative goodness of fit won't be the easiest thing in the world!)
+        ''' Define the objective for Optuna ''' #TODO: (fabian) make a function that checks the fit of a model at a given timepoint, and then create a function which computes the fit *up to* a given timepoint instead, and then use this to implement reporting of intermediate values, and early stopping, within our sim. This would require a way to do 'callback functions' within the running of a sim, called back at every nth time jump (or maybe every time jump? but probably sticking to every nth timejumpo helps speed it up as calcualtion of the cumulative goodness of fit won't be the easiest thing in the world!)
+        #(Using Optuna), sample values for every parameter which we are letting vary in this calibration.
         if self.genotype_pars is not None:
             genotype_pars = self.trial_to_sim_pars(self.genotype_pars, trial)
         else:
@@ -382,28 +491,102 @@ class Calibration(sc.prettyobj):
         else:
             calib_pars = None
 
-        sim = self.run_sim(calib_pars, genotype_pars, hiv_pars, return_sim=True)
+        #genotype_pars (resp. hiv_pars, calib_pars) are dictionaries in the same structure as they were when passed into the calibration object's constructor, ...
+        #... but instead of defining ranges in the form [best, lower, upper] for each parameter, the dictionary 'value' of each parameter 'key' is the single ...
+        #...parameter value we will be using in this trial
+
+
+        sim = self.run_sim(trial, calib_pars, genotype_pars, hiv_pars, return_sim=True) 
+
+        #Check whether the simulation has been pruned (terminated early as it is unpromising); if it has done then run_sim will have returned None instead of a sim object
+        if sim is None:
+            op = import_optuna()
+            raise op.TrialPruned()
+
 
         # Compute fit for sim results and save sim results (TODO: THIS IS FOR A SINGLE TIMEPOINT. GENERALIZE THIS)
         sim_results = sc.objdict()
+#        print(f"self.sim_results: {self.sim_results}") ## right now, this is pretty much just printing nigeria_cancer_types.csv
+
+        
+    #    print(f"fit = {sim.fit}") #at this point, there is alreay a non-zero value in sim.fit; i presume from nigeria_cancer_cases.csv?
+
         for rkey in self.sim_results:
+#            print(f"rkey: {rkey}")
+
+
+ #           print(f"{rkey} : {sim.results[rkey]}")
+        #    print(f"self.sim_results[rkey].timepoints : {self.sim_results[rkey].timepoints}") 
+            #timepoints appears to be the nummber of years since the start of the sim, when our data refers. 
+            #for example for a sim starting at 1980 and all data fro a given rkey in 2015, timepoints = [35]. 
+            #But if some data in the rkey is from 2017 too, timepoints=[35] still, not [35,37]. though if i start from 1982 instead of 1980, timepoints=[33]
+            #so... is it that timepoints is the *first* time data for a given rkey is provided
+            #THEN IF DATA IS PROVIDED AT TWO DIFFERENT TIMEPOINTS FOR THE SAME RKEY, IS THAT THE SITUATI9ON IN WHICH WE ONLY COMPUTE FOR THE FIRST TIMEPOINT?
+            
+            #So: it appears that (at least for a sim which is set up to record a full collection of its results every year), for a given rkey (e.g.'cancerous_genotypes_dist') self.sim_results[rkey].timepoints gives us a list of the timepoints in our sim's results dictionary that matter for us for our rkey, i.e. the points in our rkey's time-indexed result list which are relevent for us when computing gof.
+            #however, it appears that our timepoints list only includes the year of the first line in our csv file (e..g if the lines go 2015, 2012, 2012 then it is 35, but if they go 2012, 2015, 2015, they are 32, both with simulations starting at 1980) 
+
+            #As it stands, timepoints[0] gives us the index in the reveant rkeys result array of the real-valued result we want to compare with a corresponding data-file result 
+
+
+            #Timepoints are in years, as opposed to dt, because when they are created in the constructor, their values are divided by resfreq
+
+            #rkey is something like 'cancerous_genotypes_dist' ; it is the result type that we want to extract (for a given year) from our model, with which to compute the gof
+
             if sim.results[rkey][:].ndim==1:
-                model_output = sim.results[rkey][self.sim_results[rkey].timepoints[0]]
+                model_output = sim.results[rkey][self.sim_results[rkey].timepoints[0]] 
             else:
-                model_output = sim.results[rkey][:,self.sim_results[rkey].timepoints[0]]
-            diffs = self.sim_results[rkey].data.value - model_output
+                model_output = sim.results[rkey][:,self.sim_results[rkey].timepoints[0]] #e.g. if we have several genotypes, this gets us the rkey result at index timepoint[0] for each genotype in a list 
+
+   #         print(f"model_output: {model_output}")
+
+    #        print(f"self.sim_results[rkey].data: {self.sim_results[rkey].data}")
+            
+            #self.sim_results[rkey].data is a Dataframe with columns named 'year','name', 'value', etc... we care about getting the 'value' column, to then compare with the values we have got in our model results
+            #The function hpm.compute_gof acts as a metric, giving us a 'distance' between the two parameter vectors
+            #By default, hpm.compute_gof(y,y_pred) gives us "normalised absolute error", i.e. |y - y_pred|/max(y) ;i.e. we normalise by the maxmimum value of this rkey at this timepoint in our data, so that we don't end up beign biased towards larger absolute values in our dataset (e.g. total HPV infections will be typically signfiicantly larger than total HPV deaths, so instead what this will do is ensure we try and get the 'percentage error' minimised on both, as a percentage of the data we are fitting to, istead of the value itself)
+           ###### diffs = self.sim_results[rkey].data.value - model_output - we dont need this line of code, it is covered by hpm.compute_gof
             gofs = hpm.compute_gof(self.sim_results[rkey].data.value, model_output) #computes the goodness of fit of the model, using the highly customizable compute_gof function in misc.py 
-            losses = gofs * self.sim_results[rkey].weights
+            losses = gofs * self.sim_results[rkey].weights   #each row in an Dataframe containing data that we want to fit to is by default weighted 1, but if we want to weight more heavily for certain quantities (which would mean we care more about fitting those quantities than other, lesser-weighted ones), we can add a 'weight' column to our csv files and just weight our rows as we desire
             mismatch = losses.sum()
-            sim.fit += mismatch
+     #####       sim.fit += mismatch   #this first declares, and then assigns values to, an instance variable sim.fit, which accumulates the objective function value for this trial
             sim_results[rkey] = model_output
 
 
+        #I have verified that if we run a trial with both nigeria csv files as our dataset, vs with just one of them, we DO get very different gofs, even though (because we have used the same random seed) the parameter values in our model are the same. 
+            #so SURELY both datafiles have an effect on our GOF; badly fitting to one of them will change our GOF and ultimatley the result of our calibration
+            #SO WHERE IS nigeria_cancer_cases.csv being used!? where is it contributing to our gof???
+        '''
+        for rkey in self.sim_results:
+            for i in len(self.sim_results[rkey].timepoints):
+                if sim.results[rkey][:].ndim==1:
+                    model_output = sim.results[rkey][self.sim_results[rkey].timepoints[timepoint]]
+                else:
+                    model_output = sim.results[rkey][:,self.sim_results[rkey].timepoints[timepoint]] #e.g. if we have several genotypes, this gets us the rkey result at index timepoint[0] for each genotype in a list 
+            
+                #We will be comparing our model output to just the data for the relevant year
+                relevant_data = sc.dcp(self.sim_results[rkey].data)
+                relevant_data = relevant_data[relevant_data.year == timepoint * sim.resfreq + sim["start"]]
+
+                weights = sc.dcp(self.sim_results[rkey].weights)
+                rows_to_delete = self.sim_results[rkey].data.index[self.sim_results[rkey].data['year'] > timepoint*sim.resfreq + sim["start"]].tolist()
+                weights = np.delete(weights, rows_to_delete)
+
+                gofs = hpm.compute_gof(self.sim_results[rkey].data.value, model_output) #computes the goodness of fit of the model, using the highly customizable compute_gof function in misc.py 
+                losses = gofs * weights   #each row in an Dataframe containing data that we want to fit to is by default weighted 1, but if we want to weight more heavily for certain quantities (which would mean we care more about fitting those quantities than other, lesser-weighted ones), we can add a 'weight' column to our csv files and just weight our rows as we desire
+                mismatch = losses.sum()
+                sim.fit += mismatch   #this first declares, and then assigns values to, an instance variable sim.fit, which accumulates the objective function value for this trial
+                sim_results[rkey] = model_output #TODO: this overrides model output until the final timepoint, not great'''
+
         extra_sim_results = sc.objdict()
+
+
         if self.extra_sim_result_keys:
             for rkey in self.extra_sim_result_keys:
                 model_output = sim.results[rkey]
                 extra_sim_results[rkey] = model_output
+
+  #      print(f"sim_results: {sim_results}")
 
         # Store results in temporary files (TODO: consider alternatives)
         if save:
@@ -412,9 +595,9 @@ class Calibration(sc.prettyobj):
             filename = self.tmp_filename % trial.number
             sc.save(filename, results)
 
-        #Report values back to the 
-
-        return sim.fit
+        #Report values back to optuna 
+            
+        return self.get_cumulative_gof(sim, np.inf)
 
 
     def make_sampler(self, seed_offset:int = 0):
@@ -425,6 +608,7 @@ class Calibration(sc.prettyobj):
         #To use a given random seed for Optuna's parameter suggestion, add it to the constructor's parameter list
         if self.run_args.rand_seed is not None:
             self.run_args.sampler_args['seed'] = self.run_args.rand_seed + seed_offset
+
 
         #Instantiate the desired sampler, unpacking the dictionary self.sampler_args to use as constructor arguments
         match self.run_args.sampler_type:
@@ -450,8 +634,8 @@ class Calibration(sc.prettyobj):
             op.logging.set_verbosity(op.logging.ERROR)
 
         sampler = self.make_sampler(id) #Construct a sampler according to the data in self.run_args; we offset the seed by 'id' iff we are using a user-defined seed
-
         study = op.load_study(storage=self.run_args.storage, study_name=self.run_args.name, sampler=sampler)
+
         output = study.optimize(self.run_trial, n_trials=self.run_args.n_trials, callbacks=None) #self.run_trial is our objective function (i.e. will take our study and use optuna's suggested value to get us a goodness-of-fit value which is returned). 
         
         return output
@@ -544,6 +728,7 @@ class Calibration(sc.prettyobj):
         self.analyzer_results = []
         self.sim_results = []
         self.extra_sim_results = []
+        self.unloadable_study_indices= [] #indices of studies which failed to load; these cannot be queried for data to plot
         if load:
             print('Loading saved results...')
             for trial in study.trials:
@@ -564,6 +749,7 @@ class Calibration(sc.prettyobj):
                     print(f'  Loaded trial {n}')
                 except Exception as E:
                     errormsg = f'Warning, could not load trial {n}: {str(E)}'
+                    self.unloadable_study_indices.append(n)
                     print(errormsg)
 
         # Compare the results
@@ -589,15 +775,18 @@ class Calibration(sc.prettyobj):
         results = []
         n_trials = len(study.trials)
         failed_trials = []
+        pruned_trials = []
         for trial in study.trials:
             data = {'index':trial.number, 'mismatch': trial.value}
             for key,val in trial.params.items():
                 data[key] = val
             if data['mismatch'] is None:
                 failed_trials.append(data['index'])
+            elif trial.number in self.unloadable_study_indices: 
+                pruned_trials.append(data['index'])
             else:
                 results.append(data)
-        print(f'Processed {n_trials} trials; {len(failed_trials)} failed')
+        print(f'Processed {n_trials} trials; {len(failed_trials)} failed, {len(pruned_trials)} pruned')
 
         keys = ['index', 'mismatch'] + list(best.keys())
         data = sc.objdict().make(keys=keys, vals=[])
@@ -697,11 +886,20 @@ class Calibration(sc.prettyobj):
             age_labels[resname] = [str(int(resdict['bins'][i])) + '-' + str(int(resdict['bins'][i + 1])) for i in range(len(resdict['bins']) - 1)]
             age_labels[resname].append(str(int(resdict['bins'][-1])) + '+')
 
-        # determine how many results to plot
+        # determine how many results to plot 
         if res_to_plot is not None:
             index_to_plot = self.df.iloc[0:res_to_plot, 0].values
+
+            #We need to pad analyzer_results and sim_results in the missing positions (from the pruned trials), so that indices align
+            #Note that, as pruned trials are not amde part of the results structure in self.parse_study, they will not form part of the results to be outputted
+            self.unloadable_study_indices.sort() #increasing order sort
+            for i in self.unloadable_study_indices:
+                analyzer_results.insert(i,None)
+                sim_results.insert(i,None)
+            
             analyzer_results = [analyzer_results[i] for i in index_to_plot]
             sim_results = [sim_results[i] for i in index_to_plot]
+
 
         # Make the figure
         with hpo.with_style(**kwargs):

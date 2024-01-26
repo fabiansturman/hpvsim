@@ -850,17 +850,46 @@ class age_results(Analyzer):
 
     def finalize(self, sim):
         super().finalize()
+
         for rkey, rdict in self.result_args.items():
+
+          #  print(f"{rkey}: {rdict}") #using 'nigeria_cancer_cases.csv', the rkey is 'cancers', and the 'rdict' contains a dataframe of the csv file, a boolean value of True for the key 'compute_fit', our age bins, our edges (which appears to be the same as our age bins just with 100 at the end??), our age labels (human readable age bins effectively),...
+                                            #... a timepoints list which is just a single timepoint, 163(for some reason this timepoint is given in terms of dt's, as the timepoint 163 is given by 4timepoints/year * 40years + 3timepoints to get to the end of the year = 4*40+6 =163)...
+                                            #... a key 'size' whose value is 16; this is the number of rows of data we have which makes sense
+                                            #... a key 'weights' which again is there to let us weight different rows differently if we want
+                                            #... 
+
             recorded_dates = [k for k in self.results[rkey].keys()][1:]
+            #here, recorded_dates actually can be a list with several differnet relevant years on it, and it appears that our gof IS affected by different years at the same time
             validate_recorded_dates(sim, requested_dates=rdict.years, recorded_dates=recorded_dates, die=self.die)
             if 'compute_fit' in rdict.keys():
                 self.mismatch += self.compute_mismatch(rkey)
 
-        # Add to sim.fit
+        # Add to sim.fit (declaring the instance variable sim.fit in the process, if needed)
         if hasattr(sim,'fit'): sim.fit += self.mismatch
         else: sim.fit = self.mismatch
 
+    #    print(f"final mismatch = {self.mismatch}")
+
         return
+    
+    def cumulative_fit(self, sim, end_year):
+        '''
+        Calculates how good a fit a given sim up to a given end year, for all (if any) data available for the analyzer. Default value is 0 (returned if there is no data, or if it is a perfect match)
+        '''
+        #TODO: use the python warnings module to filter out the inevitable division warnings we get here! (as the only was I know how to do it so far is to run the code with python -W ignore foo.py)
+        import warnings
+        with warnings.catch_warnings(action="ignore"):
+            mismatch = 0
+            for rkey, rdict in self.result_args.items():
+                recorded_dates = [k for k in self.results[rkey].keys()][1:]
+                #here, recorded_dates actually can be a list with several differnet relevant years on it, and it appears that our gof IS affected by different years at the same time
+                validate_recorded_dates(sim, requested_dates=rdict.years, recorded_dates=recorded_dates, die=self.die)
+                if 'compute_fit' in rdict.keys():
+                    mismatch += self.compute_cumulative_mismatch(rkey, end_year)
+
+
+            return mismatch
 
 
     @staticmethod
@@ -945,7 +974,10 @@ class age_results(Analyzer):
 
     def compute_mismatch(self, key):
         ''' Compute mismatch between analyzer results and datafile'''
+        
+        return self.compute_cumulative_mismatch(key, np.inf) #computes mismatch across all years
 
+        ''' #THis is the previous code
         res = []
         resargs = self.result_args[key]
         results = self.results[key]
@@ -967,6 +999,49 @@ class age_results(Analyzer):
         self.result_args[key].mismatch = resargs.data['losses'].sum()
 
         return self.result_args[key].mismatch
+        '''
+    
+    def compute_cumulative_mismatch(self, key, final_year):
+        ''' Compute mismatch between analyzer results and datafile, up to (and including) the specified year'''
+        res = []
+
+        resargs = self.result_args[key]
+        results = self.results[key]
+
+        results_exist = False #this flag keeps track of whether results exist yet for this data, if so then we can compute/approximate a gof, else we set gof=0
+
+        for name, group in resargs.data.groupby(['genotype', 'year']):
+            genotype = name[0]
+            year = name[1]
+            if year<=final_year:
+                results_exist = True
+                if 'genotype' in key:
+                    sim_res = list(results[year][self.glabels.index(genotype)])
+                    res.extend(sim_res)
+                else:
+                    sim_res = list(results[year])
+                    res.extend(sim_res)
+        
+        if results_exist:
+            data_to_final_year = resargs.data.copy(deep=True) # makes a deep copy of the data for this key
+
+            #Make a deep copy of resargs.weights, and delete elements which corespond to years greater than final_year
+            weights = sc.dcp(resargs.weights)
+            rows_to_delete = data_to_final_year.index[data_to_final_year['year'] > final_year].tolist()
+            weights = np.delete(weights, rows_to_delete)
+
+            #deletes all rows for which the row's 'year' value is beyond the final year being considered here
+            data_to_final_year = data_to_final_year[data_to_final_year.year <= final_year] 
+            
+            #Calculate mismatch
+            data_to_final_year['model_output'] = res
+            data_to_final_year['gofs'] = hpm.compute_gof(data_to_final_year['value'].values, data_to_final_year['model_output'].values)
+            data_to_final_year['losses'] = data_to_final_year['gofs'].values * weights
+            mismatch = data_to_final_year['losses'].sum()
+
+            return mismatch
+        else:
+            return 0
 
     def get_to_plot(self):
         ''' Get number of plots to make '''

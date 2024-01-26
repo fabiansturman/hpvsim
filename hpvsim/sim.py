@@ -25,6 +25,7 @@ class Sim(hpb.BaseSim):
 
     def __init__(self, pars=None, datafile=None, label=None,
                  popfile=None, popdict=None, people=None, version=None, hiv_datafile=None, art_datafile=None,
+                 
                  **kwargs):
 
         # Set attributes
@@ -45,6 +46,7 @@ class Sim(hpb.BaseSim):
         self.results_ready = False    # Whether or not results are ready
         self._default_ver  = version  # Default version of parameters used
         self._orig_pars    = None     # Store original parameters to optionally restore at the end of the simulation
+
 
         # Make default parameters (using values from parameters.py)
         default_pars = hppar.make_pars(version=version) # Start with default pars
@@ -415,7 +417,7 @@ class Sim(hpb.BaseSim):
                 resfreq = int(frequency / self['dt'])
         self.resfreq = resfreq
         if not self.resfreq > 0:
-            errormsg = f'The results frequence should be a positive integer, not {self.resfreq}: dt may be too large'
+            errormsg = f'The results frequency should be a positive integer, not {self.resfreq}: dt may be too large'
             raise ValueError(errormsg)
 
         # Construct the tvec that will be used with the results
@@ -476,7 +478,7 @@ class Sim(hpb.BaseSim):
 
         # Type distributions by cytology
         for var, name in zip(hpd.type_dist_keys, hpd.type_dist_names):
-            results[var+'_genotype_dist'] = init_res(name, n_rows=ng, color=stock_colors[0])
+            results[var+'_genotype_dist'] = init_res(name, n_rows=ng, color=stock_colors[0]) #i.e. we have as many rows in our array as we have genotypes
 
         # Vaccination results
         results['new_vaccinated'] = init_res('Newly vaccinated by genotype', n_rows=ng)
@@ -936,8 +938,15 @@ class Sim(hpb.BaseSim):
         return
 
 
-    def run(self, do_plot=False, until=None, restore_pars=True, reset_seed=True, verbose=None, **kwargs):
-        ''' Run the model once '''
+    def run(self, do_plot=False, until=None, restore_pars=True, reset_seed=True, verbose=None,
+            callback = None, callback_annual = True,
+              **kwargs):
+        ''' 
+        Run the model once
+        If not None, kill_callback is a function: numeric type->None.
+        In each call of callback, if it returns True, we kill the simulation by immediately returning. 
+        If callback_annual, then callback is called yearly and passed the current year as a parameter, else it is called each dt and passed the current timestep.
+        '''
         # Initialization steps -- start the timer, initialize the sim and the seed, and check that the sim hasn't been run
         T = sc.timer()
 
@@ -982,9 +991,9 @@ class Sim(hpb.BaseSim):
         if errormsg:
             raise AlreadyRunError(errormsg)
 
+
         # Main simulation loop
         while self.t < until:
-
             # Check if we were asked to stop
             elapsed = T.toc(output=True)
             if self['timelimit'] and elapsed > self['timelimit']:
@@ -997,7 +1006,7 @@ class Sim(hpb.BaseSim):
             # Print progress
             if verbose:
                 simlabel = f'"{self.label}": ' if self.label else ''
-                string = f'  Running {simlabel}{self.yearvec[self.t]:0.1f} ({self.t:2.0f}/{self.npts}) ({elapsed:0.2f} s) '
+                string = f'  Running {simlabel} {self.yearvec[self.t]:0.1f} ({self.t:2.0f}/{self.npts}) ({elapsed:0.2f} s) '
                 if verbose >= 2:
                     sc.heading(string)
                 elif verbose>0:
@@ -1007,10 +1016,39 @@ class Sim(hpb.BaseSim):
             # Do the heavy lifting -- actually run the model!
             self.step()
 
+            #Callback section - for checking whether we need to kill this run
+            if callback is not None:
+                if callback_annual and self.t * self["dt"] + self["start"]  -  np.floor(self.t * self["dt"] + self["start"] ) < self["dt"]/2:
+                    #If doing an annual callback, we callback at the beginning of year n+1 for computations on data up-to-and-including year n
+                    callback(np.floor(self.t * self["dt"] + self["start"] - 1 ))
+                else:
+                    #In this case, we pass our current timestep, self.t, to the callback function
+                    callback(self.t) 
+
+                    
+            '''
+
+            if callback is not None and self.t<len(self.yearvec): #we do not call the callback function at the very end when the sum finshes
+                end_of_year = np.abs(np.floor(self.yearvec[self.t]) - (self.yearvec[self.t] + self["dt"] - 1) ) < self["dt"]/2  #this check is robust against floating point error
+                if callback_annual and end_of_year:
+                    #The above condition checks that we have just finished the final step within a year, and we want to do an annual callback
+                    current_year = np.floor(self.yearvec[self.t])
+                    callback(current_year)
+                else:
+                    #In this case, we pass our current timestep, self.t, to the callback function
+                    callback(self.t) 
+            '''
+        
+  #
+  #       print(f"doing a callback just before finalizing at timepoint {self.t}.")
+     #   callback(np.inf)
+
         # If simulation reached the end, finalize the results
         if self.complete:
             self.finalize(verbose=verbose, restore_pars=restore_pars)
             sc.printv(f'Run finished after {elapsed:0.2f} s.\n', 1, verbose)
+
+
 
         return self
 
@@ -1022,6 +1060,7 @@ class Sim(hpb.BaseSim):
             # Because the results are rescaled in-place, finalizing the sim cannot be run more than once or
             # otherwise the scale factor will be applied multiple times
             raise AlreadyRunError('Simulation has already been finalized')
+
 
         # Finalize analyzers and interventions
         self.finalize_analyzers()
@@ -1045,6 +1084,7 @@ class Sim(hpb.BaseSim):
             else:
                 self.brief() # Print brief summary of the sim
 
+
         return
 
 
@@ -1053,11 +1093,22 @@ class Sim(hpb.BaseSim):
         self.compute_states()
         self.compute_summary()
         return
-
-
+    
     def compute_states(self):
         '''
         Compute prevalence, incidence, and other states.
+        This function is intended to be called after a simulation is complete.
+        '''
+
+        self.results = self.compute_intermediate_states()
+
+        return
+
+    """OLD
+    def compute_states(self):
+        '''
+        Compute prevalence, incidence, and other states.
+        This function is intended to be called after a simulation is complete.
         '''
         res = self.results
 
@@ -1134,6 +1185,91 @@ class Sim(hpb.BaseSim):
         self.results['cum_cancer_treated'][:] = np.cumsum(self.results['new_cancer_treatments'][:], axis=0)
 
         return
+
+        """
+    
+    def compute_intermediate_states(self):
+        '''
+        Compute prevalence, incidence, and other states for a simulation 'so far', and return the intermediate results dictionary.
+        The results dictionary that is created by this function is returned by this function; it is not saved as an instance variable.
+        This function is intended to be called while a simulation is still running, or when it has ended
+        '''
+        res = sc.dcp(self.results)
+
+        # Compute HPV incidence and prevalence
+        def safedivide(num,denom):
+            ''' Define a variation on sc.safedivide (i.e. a division function which handles divide-by-zero and NaN elegantly) that respects shape of numerator '''
+            answer = np.zeros_like(num)
+            fill_inds = (denom!=0).nonzero()
+            if len(num.shape)==len(denom.shape):
+                answer[fill_inds] = num[fill_inds] / denom[fill_inds]
+            else:
+                answer[:, fill_inds] = num[:, fill_inds] / denom[fill_inds]
+            return answer
+        
+        ng = sc.dcp(self.pars['n_genotypes'])
+        res['hpv_incidence'][:]                = safedivide(res['infections'][:], ng*res['n_susceptible'][:])
+        res['hpv_incidence_by_genotype'][:]    = safedivide(res['infections_by_genotype'][:], res['n_susceptible_by_genotype'][:])
+        res['hpv_incidence_by_age'][:]         = safedivide(res['infections_by_age'][:], res['n_susceptible_by_age'][:])
+        res['hpv_prevalence'][:]               = safedivide(res['n_infectious'][:], ng*res['n_alive'][:])
+        res['hpv_prevalence_by_genotype'][:]   = safedivide(res['n_infectious_by_genotype'][:], res['n_alive'][:])
+        res['hpv_prevalence_by_age'][:]        = safedivide(res['n_infectious_by_age'][:], res['n_alive_by_age'][:])
+
+        alive_females = res['n_alive_by_sex'][0,:]
+
+        res['female_hpv_prevalence_by_age'][:] = safedivide((res['n_females_infectious_by_age'][:]),
+                                                                     res['n_females_alive_by_age'][:])
+
+        res['precin_prevalence'][:] = safedivide(res['n_precin'][:], ng * alive_females)
+        res['precin_prevalence_by_genotype'][:] = safedivide(res['n_precin_by_genotype'][:], alive_females)
+        res['precin_prevalence_by_age'][:] = safedivide(res['n_precin_by_age'][:],
+                                                               res['n_females_alive_by_age'][:])
+        res['cin_prevalence'][:] = safedivide(res['n_cin'][:], ng*alive_females)
+        res['cin_prevalence_by_genotype'][:] = safedivide(res['n_cin_by_genotype'][:], alive_females)
+        res['cin_prevalence_by_age'][:] = safedivide(res['n_cin_by_age'][:],
+                                                               res['n_females_alive_by_age'][:])
+
+        # Compute cancer incidence.
+        at_risk_females = alive_females - res['n_cancerous'][:]
+        scale_factor = 1e5  # Cancer incidence are displayed as rates per 100k women
+        demoninator = at_risk_females / scale_factor
+        res['cancer_incidence'][:]             = res['cancers'][:] / demoninator
+        res['cancer_incidence_by_genotype'][:] = res['cancers_by_genotype'][:] / demoninator
+        res['cancer_incidence_by_age'][:]      = safedivide(res['cancers_by_age'][:], res['n_females_alive_by_age'][:]/scale_factor)
+
+        # Compute cancer mortality. Denominator is all women alive
+        denominator = alive_females/scale_factor
+        res['cancer_mortality'][:]         = res['cancer_deaths'][:]/denominator
+
+        # Compute HPV type distribution by cytology
+        for which in hpd.type_dist_keys:
+            by_type = res[f'n_{which}_by_genotype'][:]
+            totals = by_type.sum(axis=0)
+            inds_to_fill = totals > 0
+            res[which + '_genotype_dist'][:, inds_to_fill] = by_type[:, inds_to_fill] / totals[inds_to_fill]
+
+        # Demographic results
+        res['cdr'][:]  = res['other_deaths'][:] / (res['n_alive'][:])
+        res['cbr'][:]  = res['births'][:] / (res['n_alive'][:])
+
+        # Vaccination results
+        res['cum_vaccinated'][:] = np.cumsum(res['new_vaccinated'][:], axis=0)
+        res['cum_total_vaccinated'][:] = np.cumsum(res['new_total_vaccinated'][:])
+        res['cum_doses'][:] = np.cumsum(res['new_doses'][:])
+
+        # Therapeutic vaccination results
+        res['cum_tx_vaccinated'][:] = np.cumsum(res['new_tx_vaccinated'][:], axis=0)
+        res['cum_txvx_doses'][:] = np.cumsum(res['new_txvx_doses'][:])
+
+        # Screen & treat results
+        res['cum_screens'][:] = np.cumsum(res['new_screens'][:], axis=0)
+        res['cum_screened'][:] = np.cumsum(res['new_screened'][:], axis=0)
+        res['cum_cin_treatments'][:] = np.cumsum(res['new_cin_treatments'][:], axis=0)
+        res['cum_cin_treated'][:] = np.cumsum(res['new_cin_treated'][:], axis=0)
+        res['cum_cancer_treatments'][:] = np.cumsum(res['new_cancer_treatments'][:], axis=0)
+        res['cum_cancer_treated'][:] = np.cumsum(res['new_cancer_treatments'][:], axis=0)
+
+        return res
     
     
     def compute_age_mean(self, reskey, t=None):
