@@ -1,0 +1,5 @@
+2024-03-01 14:04:40.185409> Starting data generation2024-03-01 14:04:40.185409> Starting multicalibration 1: seeds=1, trials=3.2024-03-01 14:05:19.373159> Starting data generation2024-03-01 14:05:19.373159> Starting multicalibration 1: seeds=1, trials=3.2024-03-01 14:05:29.240899> Finished multicalibration 1 in 8.907636642456055 seconds. Best mismatch=nan, paramater config=Empty DataFrame
+Columns: [index, mismatch, hpv16_cin_fn_k, hpv16_dur_cin_par1, hpv18_cin_fn_k, hpv18_dur_cin_par1, hi5_cin_fn_k, hi5_dur_cin_par1, beta, hpv_control_prob]
+Index: [].2024-03-01 14:05:29.604199> Starting multicalibration 2: seeds=3, trials=3.2024-03-01 14:05:43.106846> Finished multicalibration 2 in 13.226675033569336 seconds. Best mismatch=nan, paramater config=Empty DataFrame
+Columns: [index, mismatch, hpv16_cin_fn_k, hpv16_dur_cin_par1, hpv18_cin_fn_k, hpv18_dur_cin_par1, hi5_cin_fn_k, hi5_dur_cin_par1, beta, hpv_control_prob]
+Index: [].2024-03-01 14:05:43.340001> {(1, 8.907636642456055): nan, (3, 13.226675033569336): nan}

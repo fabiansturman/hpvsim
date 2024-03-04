@@ -1,0 +1,192 @@
+2024-03-01 15:10:51.632803> Starting data generation 
+2024-03-01 15:10:51.632803> Starting multicalibration 1: seeds=1, trials=3. 
+2024-03-01 15:11:00.131161> Finished multicalibration 1 in 7.4744486808776855 seconds. Best mismatch=8.901148541691656 with paramater config=  index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+1   0:1  8.901149        0.548796             4.20741  ...      0.536294          6.642679  0.151208          0.619271
+
+[1 rows x 10 columns]. 
+2024-03-01 15:11:00.359469> Starting multicalibration 2: seeds=1, trials=9. 
+2024-03-01 15:11:12.707463> Finished multicalibration 2 in 12.080524682998657 seconds. Best mismatch=6.097760700729139 with paramater config=  index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+5   0:5  6.097761        0.439724            6.134618  ...      0.307664          8.108625  0.137264          0.785335
+
+[1 rows x 10 columns]. 
+2024-03-01 15:11:12.804072> Starting multicalibration 3: seeds=1, trials=27. 
+2024-03-01 15:11:37.356624> Finished multicalibration 3 in 24.269993782043457 seconds. Best mismatch=5.77809279114284 with paramater config=   index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+15  0:15  5.778093        0.705977            5.575481  ...      0.236911          8.577095  0.024123           0.96489
+
+[1 rows x 10 columns]. 
+2024-03-01 15:11:37.460136> Starting multicalibration 4: seeds=1, trials=81. 
+2024-03-01 15:12:43.136553> Finished multicalibration 4 in 65.3580629825592 seconds. Best mismatch=3.9300149010752277 with paramater config=   index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+45  0:45  3.930015        0.537278            5.724297  ...      0.648018          4.222064  0.182095          0.658011
+
+[1 rows x 10 columns]. 
+2024-03-01 15:12:43.226121> Starting multicalibration 5: seeds=1, trials=243. 
+2024-03-01 15:15:49.736257> Finished multicalibration 5 in 186.16877245903015 seconds. Best mismatch=4.160952401775554 with paramater config=     index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+106  0:106  4.160952        0.319188            9.983755  ...      0.375848          4.808616  0.066382          0.737711
+
+[1 rows x 10 columns]. 
+2024-03-01 15:15:49.989356> Starting multicalibration 6: seeds=1, trials=500. 
+2024-03-01 15:22:16.570328> Finished multicalibration 6 in 386.267112493515 seconds. Best mismatch=2.2108058757926297 with paramater config=   index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+61  0:61  2.210806        0.925853            4.489446  ...      0.494475          8.035036  0.081567          0.846629
+
+[1 rows x 10 columns]. 
+2024-03-01 15:22:16.846648> Starting multicalibration 7: seeds=1, trials=729. 
+2024-03-01 15:31:28.028969> Finished multicalibration 7 in 550.863698720932 seconds. Best mismatch=2.3508928761381997 with paramater config=     index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1    beta  hpv_control_prob
+214  0:214  2.350893        0.640056            4.004684  ...      0.472583          5.505876  0.0946          0.934871
+
+[1 rows x 10 columns]. 
+2024-03-01 15:31:28.274107> Starting multicalibration 8: seeds=1, trials=1000. 
+2024-03-01 15:43:55.503883> Finished multicalibration 8 in 746.9492440223694 seconds. Best mismatch=3.090491618824308 with paramater config=     index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+598  0:598  3.090492        0.522222            8.052033  ...      0.236118          5.126701  0.618857          0.759268
+
+[1 rows x 10 columns]. 
+2024-03-01 15:43:55.755787> Starting multicalibration 9: seeds=1, trials=1500. 
+2024-03-01 16:03:04.571907> Finished multicalibration 9 in 1148.516414642334 seconds. Best mismatch=2.0662095194470522 with paramater config=     index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+466  0:466   2.06621        0.850184            5.123128  ...      0.653616          4.748703  0.643475          0.470277
+
+[1 rows x 10 columns]. 
+2024-03-01 16:03:04.813956> Starting multicalibration 10: seeds=1, trials=2187. 
+2024-03-01 16:29:26.112479> Finished multicalibration 10 in 1581.0250024795532 seconds. Best mismatch=2.400994077440849 with paramater config=       index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+1978  0:1978  2.400994        0.531334            5.319227  ...      0.399508          7.965246  0.137782          0.684889
+
+[1 rows x 10 columns]. 
+2024-03-01 16:29:26.224380> Starting multicalibration 11: seeds=1, trials=3000. 
+2024-03-01 17:07:44.518646> Finished multicalibration 11 in 2297.964014530182 seconds. Best mismatch=2.5570483772662436 with paramater config=       index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+2130  0:2130  2.557048        0.532431            4.694331  ...      0.260713          7.226484  0.281044          0.395028
+
+[1 rows x 10 columns]. 
+2024-03-01 17:07:44.779582> Starting multicalibration 12: seeds=1, trials=4000. 
+2024-03-01 17:55:44.456883> Finished multicalibration 12 in 2879.391438484192 seconds. Best mismatch=2.370720648145901 with paramater config=       index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+3687  0:3687  2.370721        0.717811            4.371525  ...      0.960235          4.335214  0.102975          0.798115
+
+[1 rows x 10 columns]. 
+2024-03-01 17:55:44.794611> Starting multicalibration 13: seeds=1, trials=5000. 
+2024-03-01 18:59:59.631425> Finished multicalibration 13 in 3854.5431373119354 seconds. Best mismatch=1.9503193152069225 with paramater config=       index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+4112  0:4112  1.950319        0.317899            7.871496  ...      0.307582          6.185898  0.298012          0.608005
+
+[1 rows x 10 columns]. 
+2024-03-01 18:59:59.900273> Starting multicalibration 14: seeds=1, trials=6561. 
+2024-03-01 20:26:26.573715> Finished multicalibration 14 in 5186.354142904282 seconds. Best mismatch=1.8369481900446671 with paramater config=       index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+3699  0:3699  1.836948        0.245719            7.404216  ...      0.372571          5.980267  0.439635          0.533423
+
+[1 rows x 10 columns]. 
+2024-03-01 20:26:26.904010> Starting multicalibration 15: seeds=2, trials=3. 
+2024-03-01 20:26:38.970838> Finished multicalibration 15 in 11.763993263244629 seconds. Best mismatch=5.392311809954404 with paramater config=  index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+2   0:2  5.392312        0.517414            8.310534  ...      0.363562         11.024939  0.028897          0.670468
+
+[1 rows x 10 columns]. 
+2024-03-01 20:26:39.127179> Starting multicalibration 16: seeds=2, trials=9. 
+2024-03-01 20:27:00.799150> Finished multicalibration 16 in 21.308139085769653 seconds. Best mismatch=5.392311809954404 with paramater config=  index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+2   0:2  5.392312        0.517414            8.310534  ...      0.363562         11.024939  0.028897          0.670468
+
+[1 rows x 10 columns]. 
+2024-03-01 20:27:00.945453> Starting multicalibration 17: seeds=2, trials=27. 
+2024-03-01 20:27:51.051156> Finished multicalibration 17 in 49.74828886985779 seconds. Best mismatch=4.06790576193367 with paramater config=   index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+17  0:17  4.067906        0.216781            9.596746  ...      0.209526          8.777539  0.237359          0.820383
+
+[1 rows x 10 columns]. 
+2024-03-01 20:27:51.362989> Starting multicalibration 18: seeds=2, trials=81. 
+2024-03-01 20:29:54.641847> Finished multicalibration 18 in 122.93841886520386 seconds. Best mismatch=3.8398613909283954 with paramater config=   index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+41  1:41  3.839861         0.61109            4.027852  ...      0.348923          4.640947  0.084304          0.618226
+
+[1 rows x 10 columns]. 
+2024-03-01 20:29:54.948389> Starting multicalibration 19: seeds=2, trials=243. 
+2024-03-01 20:35:46.883359> Finished multicalibration 19 in 351.59004497528076 seconds. Best mismatch=2.6869786487442084 with paramater config=     index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+209  0:209  2.686979        0.583224            4.187623  ...      0.252345         11.955025  0.060901          0.496922
+
+[1 rows x 10 columns]. 
+2024-03-01 20:35:47.198303> Starting multicalibration 20: seeds=2, trials=500. 
+2024-03-01 20:47:43.461765> Finished multicalibration 20 in 715.9384651184082 seconds. Best mismatch=2.8125411223495105 with paramater config=     index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+467  1:467  2.812541        0.569553            4.420667  ...      0.422706          4.598977  0.208049          0.718497
+
+[1 rows x 10 columns]. 
+2024-03-01 20:47:43.766914> Starting multicalibration 21: seeds=2, trials=729. 
+2024-03-01 21:05:47.201789> Finished multicalibration 21 in 1083.0873637199402 seconds. Best mismatch=2.6230065041808777 with paramater config=     index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+701  1:701  2.623007        0.609457            4.361023  ...      0.318377         10.354051  0.109932          0.699078
+
+[1 rows x 10 columns]. 
+2024-03-01 21:05:47.509467> Starting multicalibration 22: seeds=2, trials=1000. 
+2024-03-01 21:30:52.255383> Finished multicalibration 22 in 1504.3979675769806 seconds. Best mismatch=2.406722177753611 with paramater config=     index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+555  0:555  2.406722        0.263771            5.114551  ...      0.257198          5.865511  0.136083          0.410333
+
+[1 rows x 10 columns]. 
+2024-03-01 21:30:52.622438> Starting multicalibration 23: seeds=2, trials=1500. 
+2024-03-01 22:08:04.225021> Finished multicalibration 23 in 2231.2243967056274 seconds. Best mismatch=2.383925731681001 with paramater config=       index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+1449  1:1449  2.383926        0.454015            4.152487  ...      0.322128           6.23504  0.418289          0.861584
+
+[1 rows x 10 columns]. 
+2024-03-01 22:08:04.573578> Starting multicalibration 24: seeds=2, trials=2187. 
+2024-03-01 22:59:33.096135> Finished multicalibration 24 in 3088.1616716384888 seconds. Best mismatch=2.3202728650548026 with paramater config=     index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+599  1:599  2.320273         0.42523            4.978223  ...      0.500228          5.836255  0.133998          0.928676
+
+[1 rows x 10 columns]. 
+2024-03-01 22:59:33.459721> Starting multicalibration 25: seeds=2, trials=3000. 
+2024-03-02 00:12:52.949568> Finished multicalibration 25 in 4399.09755563736 seconds. Best mismatch=2.1324325238749906 with paramater config=       index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+2099  0:2099  2.132433        0.351913            6.985692  ...      0.301034         10.324996  0.404673          0.800621
+
+[1 rows x 10 columns]. 
+2024-03-02 00:12:53.374645> Starting multicalibration 26: seeds=2, trials=4000. 
+2024-03-02 02:04:12.346394> Finished multicalibration 26 in 6678.550397396088 seconds. Best mismatch=2.2927577390224037 with paramater config=       index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+1377  0:1377  2.292758        0.265144            9.183675  ...      0.312503          7.683263  0.535547          0.878284
+
+[1 rows x 10 columns]. 
+2024-03-02 02:04:12.795809> Starting multicalibration 27: seeds=2, trials=5000. 
+2024-03-02 04:24:19.485480> Finished multicalibration 27 in 8406.193391561508 seconds. Best mismatch=2.0949519355262236 with paramater config=       index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+4502  1:4502  2.094952        0.472541            5.679411  ...      0.761352             4.882  0.087523          0.722674
+
+[1 rows x 10 columns]. 
+2024-03-02 04:24:19.963090> Starting multicalibration 28: seeds=2, trials=6561. 
+2024-03-02 07:43:19.147554> Finished multicalibration 28 in 11938.721384048462 seconds. Best mismatch=1.8129741530439962 with paramater config=       index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+6145  1:6145  1.812974        0.593417            5.567173  ...      0.546965          5.286275  0.575986          0.905074
+
+[1 rows x 10 columns]. 
+2024-03-02 07:43:19.637936> Starting multicalibration 29: seeds=3, trials=3. 
+2024-03-02 07:43:35.796301> Finished multicalibration 29 in 15.562490463256836 seconds. Best mismatch=7.3966226063334215 with paramater config=  index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+2   0:2  7.396623        0.517414            8.310534  ...      0.363562         11.024939  0.028897          0.670468
+
+[1 rows x 10 columns]. 
+2024-03-02 07:43:36.097414> Starting multicalibration 30: seeds=3, trials=9. 
+2024-03-02 07:44:15.873047> Finished multicalibration 30 in 39.280312061309814 seconds. Best mismatch=5.478774348770416 with paramater config=  index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+8   0:8  5.478774        0.966312            8.265322  ...      0.749201         10.677005  0.022619          0.750144
+
+[1 rows x 10 columns]. 
+2024-03-02 07:44:16.170303> Starting multicalibration 31: seeds=3, trials=27. 
+2024-03-02 07:45:57.693786> Finished multicalibration 31 in 101.00822949409485 seconds. Best mismatch=3.8493823943255974 with paramater config=   index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+22  1:22  3.849382         0.20564            8.961006  ...      0.621291          4.288017  0.277585          0.567521
+
+[1 rows x 10 columns]. 
+2024-03-02 07:45:58.132732> Starting multicalibration 32: seeds=3, trials=81. 
+2024-03-02 07:50:48.884984> Finished multicalibration 32 in 290.2569215297699 seconds. Best mismatch=3.621450690660213 with paramater config=   index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+43  2:43  3.621451        0.490088            7.642927  ...      0.342891          6.687067  0.617366          0.731373
+
+[1 rows x 10 columns]. 
+2024-03-02 07:50:49.319423> Starting multicalibration 33: seeds=3, trials=243. 
+2024-03-02 08:05:12.885593> Finished multicalibration 33 in 863.0572590827942 seconds. Best mismatch=3.1127534455071864 with paramater config=     index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+195  2:195  3.112753        0.499623            6.941408  ...       0.37917          7.019986  0.589719          0.837537
+
+[1 rows x 10 columns]. 
+2024-03-02 08:05:13.378298> Starting multicalibration 34: seeds=3, trials=500. 
+2024-03-02 08:35:12.890824> Finished multicalibration 34 in 1799.0480785369873 seconds. Best mismatch=2.7031271303773563 with paramater config=     index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+286  0:286  2.703127        0.347384            5.533308  ...      0.345324          5.260412  0.237251          0.802556
+
+[1 rows x 10 columns]. 
+2024-03-02 08:35:13.345490> Starting multicalibration 35: seeds=3, trials=729. 
+2024-03-02 09:07:45.026314> Finished multicalibration 35 in 1951.1482255458832 seconds. Best mismatch=2.720612446860252 with paramater config=     index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+539  2:539  2.720612        0.511123            7.630188  ...      0.423652          5.978583  0.590624          0.726764
+
+[1 rows x 10 columns]. 
+2024-03-02 09:07:45.467829> Starting multicalibration 36: seeds=3, trials=1000. 
+2024-03-02 09:52:33.158294> Finished multicalibration 36 in 2687.2812044620514 seconds. Best mismatch=2.6704902105620856 with paramater config=     index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+866  0:866   2.67049        0.383016            4.956997  ...      0.304675          4.273421  0.135951          0.333875
+
+[1 rows x 10 columns]. 
+2024-03-02 09:52:33.634424> Starting multicalibration 37: seeds=3, trials=1500. 
+2024-03-02 11:04:14.994256> Finished multicalibration 37 in 4300.931303262711 seconds. Best mismatch=2.1938010626982405 with paramater config=     index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+452  0:452  2.193801        0.275462            8.759339  ...       0.48345           4.54813  0.374642          0.700775
+
+[1 rows x 10 columns]. 
+2024-03-02 11:04:15.478756> Starting multicalibration 38: seeds=3, trials=2187. 
+2024-03-02 12:48:44.558080> Finished multicalibration 38 in 6268.621207475662 seconds. Best mismatch=2.2120834077968006 with paramater config=       index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  ...  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+1455  2:1455  2.212083        0.341923            9.074162  ...      0.455857          4.950555  0.517562          0.853312
+
+[1 rows x 10 columns]. 
+2024-03-02 12:48:45.094166> Starting multicalibration 39: seeds=3, trials=3000.

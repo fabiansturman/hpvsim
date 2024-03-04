@@ -1,8 +1,9 @@
 '''
 Define the calibration class
 '''
-
+"""
 import os
+import multiprocessing as mp
 import numpy as np
 import pylab as pl
 import pandas as pd
@@ -12,12 +13,11 @@ from . import plotting as hppl
 from . import analysis as hpa
 from . import parameters as hppar
 from .settings import options as hpo # For setting global options
-import plotly.graph_objects as go
-import plotly.io as pio
-import datetime
 
 
 __all__ = ['Calibration']
+
+
 
 def import_optuna():
     ''' A helper function to import Optuna, which is an optional dependency '''
@@ -129,8 +129,6 @@ class Calibration(sc.prettyobj):
         self.verbose        = verbose
         self.calibrated     = False
         self.learning_curve = None                     #Assigned a value once self.calibrated = True
-        self.contour        = None                     #Assigned a value once self.calibrated  =True
-        self.timeline       = None                     #Assigned a value once self.calibrated = True
 
         # Create age_results intervention
         self.target_data = []
@@ -186,7 +184,7 @@ class Calibration(sc.prettyobj):
                 self.result_args[rkey].name = self.sim.results[rkey].name
                 self.result_args[rkey].color = self.sim.results[rkey].color
         # Temporarily store a filename
-        self.tmp_filename = name + 'tmp_calibration_%05i.obj'
+        self.tmp_filename = 'tmp_calibration_%05i.obj'
 
         
         #Populate a list of all the years for which we have data that is split by age, and then all the years for which we have data that is not split by age
@@ -201,7 +199,6 @@ class Calibration(sc.prettyobj):
             else: 
                 self.sim_result_years += targ_years
                 self.sim_result_years = list(set(self.sim_result_years))
-        
 
 
         self.years = list(set(self.age_result_years + self.sim_result_years))
@@ -216,8 +213,12 @@ class Calibration(sc.prettyobj):
         return
 
 
-    def run_sim(self, trial, calib_pars=None, genotype_pars=None, hiv_pars=None, label=None, return_sim=False):
+    def run_sim(self, trial, calib_pars=None, genotype_pars=None, hiv_pars=None, label=None, return_sim=False, prune=None):
         ''' Create and run a simulation '''
+        #If prune=None, we use the default prune value (whatever was set before)
+        if prune is None:
+            prune = self.run_args.prune
+
         op = import_optuna()
 
         sim = sc.dcp(self.sim) #Creates a deep copy of the provided simulation object, this is what we will be dealing with
@@ -229,8 +230,15 @@ class Calibration(sc.prettyobj):
         sim.update_pars(new_pars)        #... and then update our sim with our new values for the adjustable parameters
         sim.initialize(reset=True, init_analyzers=False) # Necessary to reinitialize the sim here so that the initial infections get the right parameters
 
-        #define the callback function which will be called each year by our sim, to determine whether it should be pruned
-        def callback(current_year):
+        
+                
+
+        
+        # Run the sim
+        try:
+            if prune:
+                #define the callback function which will be called each year by our sim, to determine whether it should be pruned
+                def callback(current_year):
                                 #          if current_year in self.years: #For testing; printing out the itnermediate goodness-of-fit values that have been computed
                                 #             print()
                                     #            print(f"Results for year {current_year}")
@@ -238,19 +246,14 @@ class Calibration(sc.prettyobj):
                                     #          print(f"    Sim results gof: {self.get_cumulative_sim_results_gof(sim,current_year)}")
                                     #         print(f"    Total gof: {self.get_cumulative_gof(sim,current_year)}")
 
-            if current_year in self.years:
-                #We only are able to consider pruning if we can compare our model's output to at least part of our dataset 
-                intermediate_gof = self.get_cumulative_gof(sim,current_year)
-                trial.report(intermediate_gof, current_year)
+                    if current_year in self.years:
+                        #We only are able to consider pruning if we can compare our model's output to at least part of our dataset 
+                        intermediate_gof = self.get_cumulative_gof(sim,current_year)
+                        trial.report(intermediate_gof, current_year)
 
-                if trial.should_prune():
-                    raise op.TrialPruned()
-                
-
-        
-        # Run the sim
-        try:
-            if self.run_args.prune:
+                        if trial.should_prune():
+                            raise op.TrialPruned()
+                        
                 sim.run(callback=callback, callback_annual = True)
             else:
                 sim.run()
@@ -473,12 +476,10 @@ class Calibration(sc.prettyobj):
         '''
         fit = 0  #TODO: maybe use np.inf instead? optuna documentation says it supports all float-like types for intermediate value reporting and specifies numpy.flaot32 as an example, but does it support this particular constnat of the type??
 
-        if len(self.age_result_years)>0:               #check whether any of our data is split by age
-            if year_up_to >= min(self.age_result_years):            #If we have at least some age result data at or before the given end year, then compute its gof
-                fit += self.get_cumulative_age_results_gof(sim, year_up_to)
-        if len(self.sim_result_years)>0:               #check whether any of our data is not split by age
-            if year_up_to >= min(self.sim_result_years):            ##If we have at least some sim result data at or before the given end year, then compute its gof
-                fit += self.get_cumulative_sim_results_gof(sim, year_up_to)
+        if year_up_to >= min(self.age_result_years):            #If we have at least some age result data at or before the given end year, then compute its gof
+            fit += self.get_cumulative_age_results_gof(sim, year_up_to)
+        if year_up_to >= min(self.sim_result_years):            ##If we have at least some sim result data at or before the given end year, then compute its gof
+            fit += self.get_cumulative_sim_results_gof(sim, year_up_to)
 
         return fit
 
@@ -658,6 +659,130 @@ class Calibration(sc.prettyobj):
             output = [self.worker(0)]
         return output
 
+    def run_workers_RAM(self, n_workers:int):
+        '''Runs multiple workers in parellel, using only primary storage for storing optuna results '''
+        op = import_optuna()
+        if self.verbose:
+            op.logging.set_verbosity(op.logging.DEBUG)
+        else:
+            op.logging.set_verbosity(op.logging.ERROR)
+
+
+
+        def RAM_worker(task_source):
+            '''
+            This takes a source of task tuples (genotype_pars, hiv_pars, calib_pars, trial_number, transmitter), and runs a simulation on them.
+            They catch any pruning exceptions and return -1 is pruning happens, else they return the cost of the trial. THOUGH RIGHT NOW PRUNING DOES NOT HAPPEN FOR RAM WORKERS
+            If the queue is closed, or if we get None from it, that means the optimisation has completed, so kill the worker.
+            '''
+            save = True
+            
+            print("starting ram worker")
+            try:
+                print("about to get stuff from task queue")
+                x = task_source.get(block = True, timeout = None)
+                print("gotten something from task   queue")
+                while x is not None:
+                    genotype_pars, hiv_pars, calib_pars, trial_number, transmitter = x
+
+                    sim = self.run_sim(None, calib_pars, genotype_pars, hiv_pars, return_sim=True, prune=False) #TODO: my architecture relies on the worker being totally independant from the optuna trial, so I am not too sure how I would get pruning to work without some way to interact with the trial in a protected environment
+
+                    sim_results = sc.objdict()
+
+                    for rkey in self.sim_results:
+                        if sim.results[rkey][:].ndim==1:
+                            model_output = sim.results[rkey][self.sim_results[rkey].timepoints[0]] 
+                        else:
+                            model_output = sim.results[rkey][:,self.sim_results[rkey].timepoints[0]]
+                    
+                    gofs = hpm.compute_gof(self.sim_results[rkey].data.value, model_output) 
+                    losses = gofs * self.sim_results[rkey].weights  
+                    mismatch = losses.sum()
+                    sim_results[rkey] = model_output
+
+                    extra_sim_results = sc.objdict()
+
+
+                    if self.extra_sim_result_keys:
+                        for rkey in self.extra_sim_result_keys:
+                            model_output = sim.results[rkey]
+                            extra_sim_results[rkey] = model_output
+
+                    if save:
+                        results = dict(sim=sim_results, analyzer=sim.get_analyzer('age_results').results,
+                                    extra_sim_results=extra_sim_results)
+                        filename = self.tmp_filename % trial_number
+                        sc.save(filename, results)
+
+                    #Report values back to relevant optuna thread-worker
+                    fit= self.get_cumulative_gof(sim, np.inf)
+                    transmitter.send(fit)
+
+                    #wait for next task and repeat                    
+                    x = task_source.get(block = True, timeout = None)
+
+                return () #if our task_source is giving us None, that means we are out of tasks and can kill our worker
+            except ValueError:
+                if self.verbose:
+                    print("Closing worker")
+                return () #in this case, the queue has been closed, so we can quit our worker
+        
+        global task_queue
+        task_queue = mp.Queue() #will hold tuples of the form (genotype_pars, hiv_pars, calib_pars, transmitter) where transmitter is the sending-end of a pipe down which to return the result
+        
+
+        def objective(trial):
+            '''
+            Called in its own thread by optuna.
+            This function samples a set of suggested parameter values, and passes this job to the task queue, for a worker to pick up and send back to it.
+            '''
+
+            #(Using Optuna), sample values for every parameter which we are letting vary in this calibration.
+            if self.genotype_pars is not None:
+                genotype_pars = self.trial_to_sim_pars(self.genotype_pars, trial)
+            else:
+                genotype_pars = None
+            if self.hiv_pars is not None:
+                hiv_pars = self.trial_to_sim_pars(self.hiv_pars, trial)
+            else:
+                hiv_pars = None
+            if self.calib_pars is not None:
+                calib_pars = self.trial_to_sim_pars(self.calib_pars, trial)
+            else:
+                calib_pars = None
+            
+            reciever, transmitter = mp.Pipe(duplex=False)
+
+            print("adding to task queue")
+            task_queue.put((1))#genotype_pars, hiv_pars, calib_pars, trial.number, transmitter))
+
+            res = reciever.recv() #blocks until there is something to recieve; either a goodness of fit or -1 to indicate a pruned trial
+
+            if res == -1:
+                raise op.TrialPruned()
+            else:
+                return res
+
+        #Start off our workers
+        for _ in range(n_workers):
+            p = mp.Process(target=RAM_worker, args = (task_queue,))
+            p.start()
+
+
+        sampler = self.make_sampler() #when all data is in the RAM, we only have one optuna trial object at any one time, so only one sampler; no need to pass a uniqueness parameter in therefore
+        study = op.create_study(sampler = sampler)
+        study.optimize(objective,n_trials = self.run_args.n_trials, n_jobs = n_workers) #n_workers threads will be sending tasks down the task_queue but are hindered by Python's GIL. 
+                                                                #...however for each of the threads here, we have a process which does work concurrently, evaluating the tasks.
+        #The above code waits until optimisation is done, which itself depends on the workers completing the tasks. So it is blocking.
+
+        #Now, we kill each RAM_worker instance by sending n_workers x None down the queue, and closing it.
+        for _ in range(n_workers):
+            task_queue.put(None)
+        task_queue.close()
+
+        return study
+
+
 
     def remove_db(self):
         '''
@@ -690,16 +815,14 @@ class Calibration(sc.prettyobj):
         return output
 
 
-    def calibrate(self, calib_pars=None, genotype_pars=None, hiv_pars=None,  load=True, tidyup=True, plots=[], detailed_contplot = None, save_to_csv = None, **kwargs):
+    def calibrate(self, calib_pars=None, genotype_pars=None, hiv_pars=None, verbose=True, load=True, tidyup=True, useRAM=False, **kwargs):
         '''
         Actually perform calibration.
 
         Args:
             calib_pars (dict): if supplied, overwrite stored calib_pars
+            verbose (bool): whether to print output from each trial
             plot_intermediate: whether to output a plot of all the intermediate trial values as the calibration progressed
-            plots: a list of the plots to calcualte for the calibration process. It can contain any number of the string values "learning_curve", "contour", "timeline"(including no values) in any order
-            detailed_contplot: either None or a list tuples (p1,p2) of two parameter names. For each of these tuples, we will draw a detailed contour plot: pruned trial coordinates are overlayed onto it and trials which decreased the best objective value found so far are highlighted
-            save_to_csv: If not none, saves a .csv file of the trials of this study to save_to_csv's filename
             kwargs (dict): if supplied, overwrite stored run_args (n_trials, n_workers, etc.)
         '''
         op = import_optuna()
@@ -718,72 +841,18 @@ class Calibration(sc.prettyobj):
 
         # Run the optimization
         t0 = sc.tic() #together with sc.toc() this will calculate how long the optimisation took
-        start_datetime = datetime.datetime.now()
-        self.make_study() #we don't need to bother getting the returned value from this function; the created study is stored, and accessible from, our saved database file. Our workers will acces it through this.
-        self.run_workers()
-        study = op.load_study(storage=self.run_args.storage, study_name=self.run_args.name, sampler = self.make_sampler())
-        self.best_pars = sc.objdict(study.best_params)
-        end_datetime = datetime.datetime.now()
-        self.elapsed = sc.toc(t0, output=True)
+        if not useRAM:
+            self.make_study() #we don't need to bother getting the returned value from this function; the created study is stored, and accessible from, our saved database file. Our workers will acces it through this.
+            self.run_workers()
+            study = op.load_study(storage=self.run_args.storage, study_name=self.run_args.name, sampler = self.make_sampler())
+            self.best_pars = sc.objdict(study.best_params)
+            self.elapsed = sc.toc(t0, output=True)
 
-        #Update the optuna plots for this calibration object
-        if "learning_curve" in plots:
+            #Update the plot of learning curve for this calibration object
             self.learning_curve = op.visualization.plot_optimization_history(study)
-        if "contour" in plots:
-            self.contour        = op.visualization.plot_contour(study) #produces a contour plot of loss against all the parameters we are training
-        if "timeline" in plots:
-            self.timeline       = op.visualization.plot_timeline(study)
+        else:
+            study = self.run_workers_RAM(1)
 
-        #Make some detailed contour plots if desired
-        if detailed_contplot is not None:
-            for (p1,p2) in detailed_contplot:
-                cont = op.visualization.plot_contour(study, params=[p1,p2])
-                #We will add pruned trials to this plot, coloured red
-                xs = []
-                ys = []
-                for trial in study.trials:
-                    if trial.state == op.trial.TrialState.PRUNED:
-                        params = trial.params #these are the suggested parameter values of the trial
-                        xs.append(params[p1])
-                        ys.append(params[p2])           
-                cont.add_trace(go.Scatter(x=xs, y=ys,marker={'color':'red', 'line':{'color':'Red', 'width':2.0}}, mode='markers', name='Pruned trials', showlegend=False))
-                
-                #For each trial at which we decreased the best objective value found so far, mark a green point on our scatter graph
-                best_opt_so_far = study.trials[0].value; decno=0
-                cont.add_trace(go.Scatter(x=[study.trials[0].params[p1]], y=[study.trials[0].params[p2]],marker={'color':'green', 'line':{'color':'yellow', 'width':5.0}}, mode='markers', name=f'Starting point', showlegend=True))
-                for trial in study.trials[1:]:
-                    if trial.state == op.trial.TrialState.COMPLETE:
-                        if trial.value < best_opt_so_far:
-                            best_opt_so_far = trial.value; decno+=1
-                            x=trial.params[p1]
-                            y=trial.params[p2]
-                            cont.add_trace(go.Scatter(x=[x], y=[y],marker={'color':'black', 'line':{'color':'orange', 'width':2.0}}, mode='markers', name=f'Obj decrease {decno}, = {trial.value}', showlegend=True))
-                #Make a special spot for the final best objective value
-                cont.add_trace(go.Scatter(x=[x], y=[y],marker={'color':'black', 'line':{'color':'yellow', 'width':5.0}}, mode='markers', name=f'Best obj, = {trial.value}', showlegend=True))
-                #Format the plot nicely and display it
-                cont.update_layout(title=f'Contour Plot of objective function against parmeters {p1} and {p2}',legend=dict(orientation="h"))
-                cont.show()
-
-        
-        #Calcualte data for a plot of best objective value against time in the study, in increments of time_inc seconds, since start_datetime
-        time_inc = 45 #seconds
-        obj_times = {}
-        trials = sc.dcp(study.trials)
-        best_obj_so_far = trials[0].value
-        time = start_datetime
-        while time<=end_datetime: #Iterate through the times of our study, in increments of tie_inc seconds, calcualting the best objective value found by this time each time
-            time = time + datetime.timedelta(0,time_inc)
-            indices_to_remove = [] #keep track of elements of trials to remove to avoid double searching (reduces time complexity from quadratic to linear)
-            for i in range(len(trials)):
-                trial = trials[i]
-                if trial.datetime_complete <=time: #we have found a trial which has occured before the time being investigated right now
-                    if trial.value is not None and trial.value < best_obj_so_far:
-                        best_obj_so_far = trial.value
-                    indices_to_remove.append(i) #now we have counted this trial, can remove it
-            for i in reversed(indices_to_remove):
-                trials.pop(i)
-            obj_times[time] = best_obj_so_far 
-        self.obj_times = obj_times
 
         # Collect analyzer results
         # Load a single sim
@@ -829,12 +898,6 @@ class Calibration(sc.prettyobj):
             self.remove_db()
 
         print(f"Calibration took {self.elapsed} seconds")
-        print(f"Best parameters found in the calibration: {study.best_params}")
-
-        
-        if save_to_csv is not None:
-            study.df.to_csv(save_to_csv)
-
 
         return self
 
@@ -1070,57 +1133,21 @@ class Calibration(sc.prettyobj):
 
         return hppl.tidy_up(fig, do_save=do_save, fig_path=fig_path, do_show=do_show, args=all_args)
     
-    def plot_learning_curve(self):
+    def plot_learning_curve(self, filename: str = None):
         '''
         Plot the learning curve for our most recent calibration.
 
         Pre: calibated
 
-        Returns a plotly instance of the learning curve
+        Args:
+            filename (str): filename to which to save the learning curve (if left as None, curve is only shown to the user and not saved)
         '''
         if not self.calibrated:
-            raise UncalibratedException("Cannot plot chart - check that you have run a calibration on this object, and that you have chosen to plot this chart in the calibration process.")
+            raise UncalibratedException("Cannot plot learning curve without first calibrating a simulation. First call the calibrate function on this object.")
 
         self.learning_curve.show() #this plot is defined in the calibrate function
 
-        return self.learning_curve
+        if filename is not None:
+            self.learning_curve.write_image(filename)
 
-    def plot_contour(self):
-        '''
-        Plot loss landscape contour for our most recent calibration.
-
-        Pre: calibated
-
-        Returns a plotly instance of the contour
-        '''
-        if not self.calibrated:
-            raise UncalibratedException("Cannot plot chart - check that you have run a calibration on this object, and that you have chosen to plot this chart in the calibration process.")
-
-        self.contour.show() #this plot is defined in the calibrate function
-
-        return self.contour
-
-    def plot_timeline(self):
-        '''
-        Plot the timeline of the calibration
-
-        Pre: calibated
-
-        Returns a plotly instance of the timeline
-        '''
-        if not self.calibrated:
-            raise UncalibratedException("Cannot plot chart - check that you have run a calibration on this object, and that you have chosen to plot this chart in the calibration process.")
-
-        self.timeline.show() #this plot is defined in the calibrate function
-
-        return self.timeline
-
-    def get_objective_time_dictionary(self):
-        '''
-        Returns a dictionary with datetime instnaces as keys, where the time datetimes are times during calibration in increments of {45} seconds,
-         and the returned dictionary's value at time-key T is obj where obj is the best objective value found by time T 
-        '''
-        if not self.calibrated:
-            raise UncalibratedException("Cannot provide objective-time dictionary without calibrating first.")
-        
-        return self.obj_times
+"""

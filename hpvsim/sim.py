@@ -943,8 +943,7 @@ class Sim(hpb.BaseSim):
               **kwargs):
         ''' 
         Run the model once
-        If not None, kill_callback is a function: numeric type->None.
-        In each call of callback, if it returns True, we kill the simulation by immediately returning. 
+        If not None, callback is a function: numeric type->None
         If callback_annual, then callback is called yearly and passed the current year as a parameter, else it is called each dt and passed the current timestep.
         '''
         # Initialization steps -- start the timer, initialize the sim and the seed, and check that the sim hasn't been run
@@ -1017,6 +1016,7 @@ class Sim(hpb.BaseSim):
             self.step()
 
             #Callback section - for checking whether we need to kill this run
+           # print(f"about to run the callback section with self.t = {self.t}")
             if callback is not None:
                 if callback_annual and self.t * self["dt"] + self["start"]  -  np.floor(self.t * self["dt"] + self["start"] ) < self["dt"]/2:
                     #If doing an annual callback, we callback at the beginning of year n+1 for computations on data up-to-and-including year n
@@ -1024,6 +1024,7 @@ class Sim(hpb.BaseSim):
                 else:
                     #In this case, we pass our current timestep, self.t, to the callback function
                     callback(self.t) 
+          #  print(f"continuing on after the callback section with self.t={self.t}")
 
                     
             '''

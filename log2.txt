@@ -1,0 +1,80 @@
+2024-03-01 14:11:32.190138> Starting data generation 
+2024-03-01 14:11:32.191110> Starting multicalibration 1: seeds=1, trials=3. 
+2024-03-01 14:11:43.212006> Finished multicalibration 1 in 9.99330759048462 seconds. Best mismatch=nan, paramater config=Empty DataFrame
+Columns: [index, mismatch, hpv16_cin_fn_k, hpv16_dur_cin_par1, hpv18_cin_fn_k, hpv18_dur_cin_par1, hi5_cin_fn_k, hi5_dur_cin_par1, beta, hpv_control_prob]
+Index: []. 
+2024-03-01 14:11:43.391093> Starting multicalibration 2: seeds=2, trials=3. 
+2024-03-01 14:11:55.631396> Finished multicalibration 2 in 11.959375619888306 seconds. Best mismatch=nan, paramater config=Empty DataFrame
+Columns: [index, mismatch, hpv16_cin_fn_k, hpv16_dur_cin_par1, hpv18_cin_fn_k, hpv18_dur_cin_par1, hi5_cin_fn_k, hi5_dur_cin_par1, beta, hpv_control_prob]
+Index: []. 
+2024-03-01 14:11:55.805741> {(1, 9.99330759048462): nan, (2, 11.959375619888306): nan} 
+2024-03-01 14:13:04.432998> Starting data generation 
+2024-03-01 14:13:04.432998> Starting multicalibration 1: seeds=1, trials=3. 
+2024-03-01 14:13:14.487105> Finished multicalibration 1 in 9.110862255096436 seconds. Best mismatch=nan with paramater config=Empty DataFrame
+Columns: [index, mismatch, hpv16_cin_fn_k, hpv16_dur_cin_par1, hpv18_cin_fn_k, hpv18_dur_cin_par1, hi5_cin_fn_k, hi5_dur_cin_par1, beta, hpv_control_prob]
+Index: []. 
+2024-03-01 14:13:14.786505> Starting multicalibration 2: seeds=2, trials=3. 
+2024-03-01 14:13:26.880598> Finished multicalibration 2 in 11.839828252792358 seconds. Best mismatch=nan with paramater config=Empty DataFrame
+Columns: [index, mismatch, hpv16_cin_fn_k, hpv16_dur_cin_par1, hpv18_cin_fn_k, hpv18_dur_cin_par1, hi5_cin_fn_k, hi5_dur_cin_par1, beta, hpv_control_prob]
+Index: []. 
+2024-03-01 14:13:27.022370> {(1, 9.110862255096436): nan, (2, 11.839828252792358): nan} 
+2024-03-01 14:14:08.830262> Starting data generation 
+2024-03-01 14:14:08.830262> Starting multicalibration 1: seeds=1, trials=3. 
+2024-03-01 14:17:25.990160> Starting data generation 
+2024-03-01 14:17:25.990160> Starting multicalibration 1: seeds=1, trials=3. 
+2024-03-01 14:17:53.145347> Starting data generation 
+2024-03-01 14:17:53.146348> Starting multicalibration 1: seeds=1, trials=3. 
+2024-03-01 14:18:51.322359> Finished multicalibration 1 in 8.841591358184814 seconds. Best mismatch=nan with paramater config=Empty DataFrame
+Columns: [index, mismatch, hpv16_cin_fn_k, hpv16_dur_cin_par1, hpv18_cin_fn_k, hpv18_dur_cin_par1, hi5_cin_fn_k, hi5_dur_cin_par1, beta, hpv_control_prob]
+Index: []. 
+2024-03-01 14:18:51.634157> Starting multicalibration 2: seeds=2, trials=3. 
+2024-03-01 14:19:34.546249> Finished multicalibration 2 in 11.520966529846191 seconds. Best mismatch=nan with paramater config=Empty DataFrame
+Columns: [index, mismatch, hpv16_cin_fn_k, hpv16_dur_cin_par1, hpv18_cin_fn_k, hpv18_dur_cin_par1, hi5_cin_fn_k, hi5_dur_cin_par1, beta, hpv_control_prob]
+Index: []. 
+2024-03-01 14:19:34.716606> {(1, 8.841591358184814): nan, (2, 11.520966529846191): nan} 
+2024-03-01 14:19:46.988824> Starting data generation 
+2024-03-01 14:19:46.988824> Starting multicalibration 1: seeds=1, trials=3. 
+2024-03-01 14:20:21.486725> Starting data generation 
+2024-03-01 14:20:21.486725> Starting multicalibration 1: seeds=1, trials=10. 
+2024-03-01 14:21:35.062873> Starting data generation 
+2024-03-01 14:21:35.062873> Starting multicalibration 1: seeds=1, trials=10. 
+2024-03-01 14:22:24.048760> Finished multicalibration 1 in 17.18533945083618 seconds. Best mismatch=nan with paramater config=Empty DataFrame
+Columns: [index, mismatch, hpv16_cin_fn_k, hpv16_dur_cin_par1, hpv18_cin_fn_k, hpv18_dur_cin_par1, hi5_cin_fn_k, hi5_dur_cin_par1, beta, hpv_control_prob]
+Index: []. 
+2024-03-01 14:22:24.349417> Starting multicalibration 2: seeds=2, trials=10. 
+2024-03-01 14:23:13.692368> Finished multicalibration 2 in 31.763357639312744 seconds. Best mismatch=nan with paramater config=Empty DataFrame
+Columns: [index, mismatch, hpv16_cin_fn_k, hpv16_dur_cin_par1, hpv18_cin_fn_k, hpv18_dur_cin_par1, hi5_cin_fn_k, hi5_dur_cin_par1, beta, hpv_control_prob]
+Index: []. 
+2024-03-01 14:23:13.878889> {(1, 17.18533945083618): nan, (2, 31.763357639312744): nan} 
+2024-03-01 14:29:23.552687> Starting data generation 
+2024-03-01 14:29:23.552687> Starting multicalibration 1: seeds=1, trials=10. 
+2024-03-01 14:31:01.234829> Finished multicalibration 1 in 18.34315061569214 seconds. Best mismatch=nan with paramater config=Empty DataFrame
+Columns: [index, mismatch, hpv16_cin_fn_k, hpv16_dur_cin_par1, hpv18_cin_fn_k, hpv18_dur_cin_par1, hi5_cin_fn_k, hi5_dur_cin_par1, beta, hpv_control_prob]
+Index: []. 
+2024-03-01 14:31:01.548066> Starting multicalibration 2: seeds=2, trials=10. 
+2024-03-01 14:32:45.029733> Starting data generation 
+2024-03-01 14:32:45.029733> Starting multicalibration 1: seeds=1, trials=3. 
+2024-03-01 14:34:51.412273> Finished multicalibration 1 in 8.85325002670288 seconds. Best mismatch=nan with paramater config=Empty DataFrame
+Columns: [index, mismatch, hpv16_cin_fn_k, hpv16_dur_cin_par1, hpv18_cin_fn_k, hpv18_dur_cin_par1, hi5_cin_fn_k, hi5_dur_cin_par1, beta, hpv_control_prob]
+Index: []. 
+2024-03-01 14:34:51.732179> Starting multicalibration 2: seeds=2, trials=3. 
+2024-03-01 14:36:12.242215> Starting data generation 
+2024-03-01 14:36:12.243213> Starting multicalibration 1: seeds=1, trials=3. 
+2024-03-01 14:42:11.638292> Starting data generation 
+2024-03-01 14:42:11.638292> Starting multicalibration 1: seeds=1, trials=3. 
+2024-03-01 14:42:35.999215> Finished multicalibration 1 in 9.342366456985474 seconds. Best mismatch=6.097760700729139 with paramater config=  index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  hpv18_cin_fn_k  hpv18_dur_cin_par1  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+3   0:3  6.097761        0.439724            6.134618        0.696907            8.233137      0.307664          8.108625  0.137264          0.785335. 
+2024-03-01 14:42:36.335106> Starting multicalibration 2: seeds=2, trials=3. 
+2024-03-01 14:42:52.113156> Finished multicalibration 2 in 12.020689249038696 seconds. Best mismatch=7.3966226063334215 with paramater config=  index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  hpv18_cin_fn_k  hpv18_dur_cin_par1  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+1   1:1  7.396623        0.517414            8.310534        0.535356            9.481756      0.363562         11.024939  0.028897          0.670468. 
+2024-03-01 14:42:52.269763> {(1, 9.342366456985474): 6.097760700729139, (2, 12.020689249038696): 7.3966226063334215} 
+2024-03-01 14:44:15.374629> Starting data generation 
+2024-03-01 14:44:15.374629> Starting multicalibration 1: seeds=1, trials=3. 
+2024-03-01 14:44:25.387231> Finished multicalibration 1 in 9.045992136001587 seconds. Best mismatch=6.097760700729139 with paramater config=  index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  hpv18_cin_fn_k  hpv18_dur_cin_par1  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+3   0:3  6.097761        0.439724            6.134618        0.696907            8.233137      0.307664          8.108625  0.137264          0.785335. 
+2024-03-01 14:44:25.718518> Starting multicalibration 2: seeds=2, trials=3. 
+2024-03-01 14:44:38.840566> Finished multicalibration 2 in 12.86048698425293 seconds. Best mismatch=7.3966226063334215 with paramater config=  index  mismatch  hpv16_cin_fn_k  hpv16_dur_cin_par1  hpv18_cin_fn_k  hpv18_dur_cin_par1  hi5_cin_fn_k  hi5_dur_cin_par1      beta  hpv_control_prob
+1   1:1  7.396623        0.517414            8.310534        0.535356            9.481756      0.363562         11.024939  0.028897          0.670468. 
+2024-03-01 14:44:39.005351> {(1, 9.045992136001587): 6.097760700729139, (2, 12.86048698425293): 7.3966226063334215} 
+2024-03-01 14:45:32.228053> Starting data generation 
+2024-03-01 14:45:32.228053> Starting multicalibration 1: seeds=1, trials=3. 

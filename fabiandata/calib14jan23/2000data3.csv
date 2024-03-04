@@ -1,0 +1,17 @@
+year,name,age,sex,genotype,value
+2000,n_infected,0,female,total,0
+2000,n_infected,15,female,total,30000
+2000,n_infected,20,female,total,610000
+2000,n_infected,25,female,total,1180000
+2000,n_infected,30,female,total,1200000
+2000,n_infected,35,female,total,1050000
+2000,n_infected,40,female,total,1270000
+2000,n_infected,45,female,total,1340000
+2000,n_infected,50,female,total,1380000
+2000,n_infected,55,female,total,1200000
+2000,n_infected,65,female,total,1480000
+2000,n_infected,70,female,total,360000
+2000,n_infected,75,female,total,170000
+2000,n_infected,80,female,total,50000
+2000,n_infected,85,female,total,18000
+2000,n_infected,100,female,total,1832

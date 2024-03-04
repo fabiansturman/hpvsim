@@ -1,0 +1,17 @@
+year,name,age,sex,genotype,value
+2010,n_infectious,0,female,total,0
+2010,n_infectious,15,female,total,150000
+2010,n_infectious,20,female,total,716666.6667
+2010,n_infectious,25,female,total,1276666.667
+2010,n_infectious,30,female,total,1286666.667
+2010,n_infectious,35,female,total,1033333.333
+2010,n_infectious,40,female,total,936666.6667
+2010,n_infectious,45,female,total,700000
+2010,n_infectious,50,female,total,596666.6667
+2010,n_infectious,55,female,total,390000
+2010,n_infectious,65,female,total,415666.6667
+2010,n_infectious,70,female,total,123333.3333
+2010,n_infectious,75,female,total,66666.66667
+2010,n_infectious,80,female,total,20000
+2010,n_infectious,85,female,total,8333.333333
+2010,n_infectious,100,female,total,0
