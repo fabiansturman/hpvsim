@@ -5,7 +5,7 @@ import optuna as op
 import sciris as sc
 import numpy as np
 
-rand_seed = 4 #random seed both for our simulation and for optuna; set to None to assign variable seeds to both
+rand_seed = 5 #random seed both for our simulation and for optuna; set to None to assign variable seeds to both
 
 if __name__ == "__main__":#to allow for using several workers in parellell
 
@@ -31,7 +31,7 @@ if __name__ == "__main__":#to allow for using several workers in parellell
         #TODO: I CANT SEEM TO GET INTERVENTIONS ADDED TO MY SIM WHEN CALIBRATING, WITHOUT GETTING A VALUEERROR 'PROVIDE EITHER A LIST OF YEARS OR A START YEAR, OR BOTH'
 
     # Configure a simulation with some parameters
-    pars = dict(n_agents=100,#10e4, 
+    pars = dict(n_agents=10e3, 
                 start=1970,
                 end=2023, 
                 dt=0.25, 
@@ -69,12 +69,12 @@ if __name__ == "__main__":#to allow for using several workers in parellell
     )
 
     # List the datafiles that contain data that we wish to compare the model to: #TODO: confirm with RObyn that so far the model deoes not work if we wish to plot teh same kind of data from a datafile over more than 1 year. right?
-    datafiles=[ #'docs\\tutorials\\nigeria_cancer_cases.csv',
-                'docs\\tutorials\\nigeria_cancer_cases_truncated.csv',
-                #'docs\\tutorials\\nigeria_cancer_types.csv',
+    datafiles=[ 'docs\\tutorials\\nigeria_cancer_cases.csv',
+    #            'docs\\tutorials\\nigeria_cancer_cases_super_truncated.csv',
+                'docs\\tutorials\\nigeria_cancer_types.csv',
              #   'fabiandata\\calib14jan23\\2000data1.csv',
-                'fabiandata\\calib14jan23\\2000data2.csv',
-                'fabiandata\\calib14jan23\\2000data3.csv',
+     #           'fabiandata\\calib14jan23\\2000data2.csv',
+      #          'fabiandata\\calib14jan23\\2000data3.csv',
      #           'fabiandata\\calib14jan23\\2010data1.csv',
      #           'fabiandata\\calib14jan23\\2010data2.csv',
                # 'fabiandata\\calib14jan23\\2010data3.csv',
@@ -94,9 +94,9 @@ if __name__ == "__main__":#to allow for using several workers in parellell
         genotype_pars=genotype_pars,
         extra_sim_result_keys=results_to_plot,
         datafiles=datafiles,
-        total_trials=2, n_workers=1, 
+        total_trials=3, n_workers=3, 
         keep_db=True, #for some reason there is a bug where if i set keep_db to its default value of false, i get a WinError 32 (the process cannot access the file because it is being used by another process) relating to line 431 of calibration.py
-        name="CalibrationRawResults\\hpvsim_calubration_24Mar24_34_",
+        name="CalibrationRawResults\\hpvsim_calubration_15Mar24_5_",
         rand_seed = rand_seed, #rand_seed, #Keeping random seed constant for reproducibility (random seed is used for optuna runs)
         sampler_type = "tpe",       #Accepted values are  ["random", "grid", "tpe", "cmaes", "nsgaii", "qmc", "bruteforce"]
         sampler_args = None, # dict(constant_lia r=True), # dict(multivariate=True, group=True, constant_liar=True)       # Refer to optuna documentation for relevant arguments for a given sampler type; https://optuna.readthedocs.io/en/stable/reference/samplers/index.html 
@@ -113,7 +113,7 @@ if __name__ == "__main__":#to allow for using several workers in parellell
             all_parameter_pairs.append((ps[i],ps[j]))
 #[('beta', 'hi5_cin_fn_k'), ('hi5_dur_cin_par1','hpv16_cin_fn_k'), ('hpv16_dur_cin_par1', 'hpv18_cin_fn_k'),( 'hpv18_dur_cin_par1', 'hpv_control_prob')]
 
-    calib.calibrate(die=False,plots=["learning_curve", "timeline"], detailed_contplot=None,save_to_csv=None) #bad idea to do a countour plot with many trials - takes a lot of memory
+    calib.calibrate(die=False,plots=["learning_curve", "timeline"], detailed_contplot=[],save_to_csv=None) #bad idea to do a countour plot with many trials - takes a lot of memory
     calib.plot_learning_curve()
     #calib.plot_contour()
     calib.plot_timeline()

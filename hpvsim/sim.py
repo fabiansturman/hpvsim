@@ -940,7 +940,7 @@ class Sim(hpb.BaseSim):
 
     def run(self, do_plot=False, until=None, restore_pars=True, reset_seed=True, verbose=None,
             callback = None, callback_annual = True,
-              **kwargs):
+                **kwargs):
         ''' 
         Run the model once
         If not None, callback is a function: numeric type->None
@@ -1016,7 +1016,6 @@ class Sim(hpb.BaseSim):
             self.step()
 
             #Callback section - for checking whether we need to kill this run
-           # print(f"about to run the callback section with self.t = {self.t}")
             if callback is not None:
                 if callback_annual and self.t * self["dt"] + self["start"]  -  np.floor(self.t * self["dt"] + self["start"] ) < self["dt"]/2:
                     #If doing an annual callback, we callback at the beginning of year n+1 for computations on data up-to-and-including year n
@@ -1024,31 +1023,11 @@ class Sim(hpb.BaseSim):
                 else:
                     #In this case, we pass our current timestep, self.t, to the callback function
                     callback(self.t) 
-          #  print(f"continuing on after the callback section with self.t={self.t}")
-
-                    
-            '''
-
-            if callback is not None and self.t<len(self.yearvec): #we do not call the callback function at the very end when the sum finshes
-                end_of_year = np.abs(np.floor(self.yearvec[self.t]) - (self.yearvec[self.t] + self["dt"] - 1) ) < self["dt"]/2  #this check is robust against floating point error
-                if callback_annual and end_of_year:
-                    #The above condition checks that we have just finished the final step within a year, and we want to do an annual callback
-                    current_year = np.floor(self.yearvec[self.t])
-                    callback(current_year)
-                else:
-                    #In this case, we pass our current timestep, self.t, to the callback function
-                    callback(self.t) 
-            '''
-        
-  #
-  #       print(f"doing a callback just before finalizing at timepoint {self.t}.")
-     #   callback(np.inf)
 
         # If simulation reached the end, finalize the results
         if self.complete:
             self.finalize(verbose=verbose, restore_pars=restore_pars)
             sc.printv(f'Run finished after {elapsed:0.2f} s.\n', 1, verbose)
-
 
 
         return self

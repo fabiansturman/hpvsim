@@ -3,37 +3,41 @@ import plotly.graph_objects as go
 import pandas as pd
 import scipy
 
+
 def normal_confidence_interval(data, alpha):
-        '''
-        Returns (l,mu,u) where l and u are the lower and upper bounds respectively of the 100(1-alpha)%-confidence interval for the mean of the provided list of data, and mu is the mean.
-        We assume the data is normally distributed.
+    '''
+    Returns (l,mu,u) where l and u are the lower and upper bounds respectively of the 100(1-alpha)%-confidence interval for the mean of the provided list of data, and mu is the mean.
+    We assume the data is normally distributed.
 
-        We use the result that for X sampled iid from N(mu, v), (Xbar-mu)/(S/sqrt(n)) ~ t_{n-1}, where Xbar is the sample mean and S^2 is the sample variance [Niel Laws, 2023, A9 Statistics Lecture Notes Oxford University] 
+    We use the result that for X sampled iid from N(mu, v), (Xbar-mu)/(S/sqrt(n)) ~ t_{n-1}, where Xbar is the sample mean and S^2 is the sample variance [Niel Laws, 2023, A9 Statistics Lecture Notes Oxford University]
 
-        Parameters:
-            data    = a list of numeric data
-            alpha   = a real number in (0,1)
-        
-        Pre:
-            alpha<-(0,1)
-            len(data) >= 2 (else its sample variance is ill-defined)
-        '''
-        n=len(data)
-        #Calculate sample mean and sample variance
-        Xbar=0
-        for x in data:
-            Xbar += x
-        Xbar /= n
+    Parameters:
+        data    = a list of numeric data
+        alpha   = a real number in (0,1)
 
-        S2 = 0
-        for x in data:
-            S2 += (x-Xbar) ** 2
-        S2 /= (n-1)
-        S = S2 ** 0.5
+    Pre:
+        alpha<-(0,1)
+        len(data) >= 2 (else its sample variance is ill-defined)
+    '''
+    n = len(data)
+    # Calculate sample mean and sample variance
+    Xbar = 0
+    for x in data:
+        Xbar += x
+    Xbar /= n
 
-        #Calculate CI
-        offset = scipy.stats.t.cdf(1-alpha/2, n-1) * S/(n ** 0.5)
-        return (Xbar-offset,Xbar, Xbar+offset)
+    S2 = 0
+    for x in data:
+        S2 += (x - Xbar) ** 2
+    S2 /= (n - 1)
+    S = S2 ** 0.5
+
+    # Calculate CI
+    offset = scipy.stats.t.cdf(1 - alpha / 2, n - 1) * S / (n ** 0.5)
+    return (Xbar - offset, Xbar, Xbar + offset)
+
+
+
 
 #A plot of the best final cost of 30 calibrations after either 6000 trials with pruning, or 6000 trials without pruning; without, it is a decent bit slower
 

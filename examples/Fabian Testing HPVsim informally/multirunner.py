@@ -1,6 +1,4 @@
-# Import HPVsim
 import hpvsim as hpv
-
 import sciris as sc
 import scipy
 import pandas as pd
@@ -264,9 +262,6 @@ class Multirunner:
 
 
 
-        #TODO: produce a q-q plot of lines a given x-point against normal dist, to show they are normal (for each x point, or a parameter list of x points).
-                    #This is to justify the confidence interval calculation that we use!
-
         means = [] #For each trial number (i.e. each x-value) we store the mean 'best cost' over all our trials...
         lowers = []; uppers = []#...as well as lower and upper bounds for our 95% confidence interval
         xs=[]
@@ -319,7 +314,7 @@ def make_multirunner(name,prune:bool, seeds=10):
     '''
     rss = list(range(seeds))
 
-    pars = dict(n_agents=10e4, 
+    pars = dict(n_agents=5*10e3, 
                 start=1980,
                 end=2023, 
                 dt=0.25, 
@@ -348,9 +343,10 @@ def make_multirunner(name,prune:bool, seeds=10):
         )
     )
 
-    datafiles=[ 'docs\\tutorials\\nigeria_cancer_cases_super_truncated.csv',
-                'fabiandata\\calib14jan23\\2000data2.csv',
-                'fabiandata\\calib14jan23\\2000data3.csv',]
+    datafiles=[ 'docs\\tutorials\\nigeria_cancer_cases_truncated.csv',
+                'augmented2000data1',
+                'augmented2000data2',
+                ]
     
     results_to_plot = ['cancer_incidence', 'asr_cancer_incidence']
     
@@ -362,7 +358,7 @@ def make_multirunner(name,prune:bool, seeds=10):
                                 genotype_pars=genotype_pars,
                                 extra_sim_result_keys=results_to_plot,
                                 datafiles=datafiles,
-                                total_trials=200,
+                                total_trials=5000,
                                 keep_db=True, 
                                 sampler_type = "tpe",
                                 sampler_args = None, 
@@ -372,28 +368,10 @@ def make_multirunner(name,prune:bool, seeds=10):
 
 
 if __name__ == "__main__":
-    '''
-    mr = make_multirunner(prune=False, name="CalibrationRawResults\\hpvsim_calubration_1Mar24_4_", seeds=3)
-
-    mr.calibrate()
-
-    #plot timeline for each calibration
-    for c in mr.calibrations:
-        c.plot_timeline()
-
-    mr.get_learning_curves().show()
-
-    print(mr.df)
-
-    print(mr.get_best_params(5))
-
-    '''
-    input("Press enter to start.")
-
     #Intantiate multirunner(s)
     seeds =10
-    multirunner_prune = make_multirunner(prune=True, name="CalibrationRawResults\\hpvsim_calubration_4Mar2024p_3_", seeds=seeds)
-    multirunner_noprune = make_multirunner(prune=False, name="CalibrationRawResults\\hpvsim_calubration_4Mar2024np_3_", seeds=seeds)
+    multirunner_prune = make_multirunner(prune=True, name="CalibrationRawResults\\hpvsim_calubration_4Mar2024p_9_", seeds=seeds)
+    multirunner_noprune = make_multirunner(prune=False, name="CalibrationRawResults\\hpvsim_calubration_4Mar2024np_9_", seeds=seeds)
 
     #Calibrate multirunner(s)
     multirunner_prune.calibrate()
@@ -423,14 +401,14 @@ if __name__ == "__main__":
 
 
     #Show learning curves
-    plt = multirunner_prune.get_learning_curves(title = f"Calibrating to highly front-loaded dataset with pruning, over 200 trials and with {seeds} random seeds")
+    plt = multirunner_prune.get_learning_curves(title = f"Calibrating to highly front-loaded dataset with pruning, over 5000 trials and with {seeds} random seeds")
     plt.show()
-    plt = multirunner_noprune.get_learning_curves(title = f"Calibrating to highly front-loaded dataset with no pruning, over 200 trials and with {seeds} random seeds")
+    plt = multirunner_noprune.get_learning_curves(title = f"Calibrating to highly front-loaded dataset with no pruning, over 5000 trials and with {seeds} random seeds")
     plt.show()
 
 
-    pruneCIplot = multirunner_prune.get_learning_curves_CI(title=f"Calibrating to highly front-loaded dataset with pruning, over 200 trials and with {seeds} random seeds", name="Pruned", colour='red')
-    nopruneCIplot = multirunner_noprune.get_learning_curves_CI(title=f"Calibrating to highly front-loaded dataset with no pruning, over 200 trials and with {seeds} random seeds", name="Not Pruned", colour='black')
+    pruneCIplot = multirunner_prune.get_learning_curves_CI(title=f"Calibrating to highly front-loaded dataset with pruning, over 5000 trials and with {seeds} random seeds", name="Pruned", colour='red')
+    nopruneCIplot = multirunner_noprune.get_learning_curves_CI(title=f"Calibrating to highly front-loaded dataset with no pruning, over 5000 trials and with {seeds} random seeds", name="Not Pruned", colour='black')
     pruneCIplot.show()
     nopruneCIplot.show()
 
@@ -442,6 +420,38 @@ if __name__ == "__main__":
     fig.add_trace(nopruneCIplot.data[1])
     fig.add_trace(nopruneCIplot.data[2])
     fig.show()
+
+
+    #Calcualte the objective value at each timepoint
+    prunepoints={}
+    noprunepoints={}
+    obj_times = {}
+    times = []
+    for calib in multirunner_prune.calibrations: #combine all objectivevalue-time dictionaries of the calibrations into one big one
+        obj_times.update(calib.get_objective_time_dictionary())
+        times += calib.get_objective_time_dictionary().keys()
+    times.sort()
+    best_obj_so_far = obj_times[times[0]] 
+    for time in times: #iterate through time, making our 'best objective value seen so far' be the best one seen across all the calibrations at this point in time
+        if obj_times[time] < best_obj_so_far:
+            best_obj_so_far = obj_times[time]
+        prunepoints[(seeds, time)] = best_obj_so_far
+    obj_times = {}
+    times = []
+    for calib in multirunner_noprune.calibrations: #combine all objectivevalue-time dictionaries of the calibrations into one big one
+        obj_times.update(calib.get_objective_time_dictionary())
+        times += calib.get_objective_time_dictionary().keys()
+    times.sort()
+    best_obj_so_far = obj_times[times[0]] 
+    for time in times: #iterate through time, making our 'best objective value seen so far' be the best one seen across all the calibrations at this point in time
+        if obj_times[time] < best_obj_so_far:
+            best_obj_so_far = obj_times[time]
+        noprunepoints[(seeds, time)] = best_obj_so_far
+    input("press enter to get prunepoints")
+    print(f"prunepoints={prunepoints}")
+    input("press enter to get noprunepoints")
+    print(f"noprunepoints={noprunepoints}")
+
 
 
 

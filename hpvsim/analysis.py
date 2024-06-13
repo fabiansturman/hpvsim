@@ -977,7 +977,7 @@ class age_results(Analyzer):
         
         return self.compute_cumulative_mismatch(key, np.inf) #computes mismatch across all years
 
-        ''' #THis is the previous code
+        ''' #This is the previous code
         res = []
         resargs = self.result_args[key]
         results = self.results[key]

@@ -163,7 +163,6 @@ class Calibration(sc.prettyobj):
         self.sim.initialize()
         for rkey in sim_results.keys():
             sim_results[rkey].timepoints = sim.get_t(sim_results[rkey].data.year.unique()[0], return_date_format='str')[0]//sim.resfreq 
-            #to change to be a list of ALL the unique timepoints relevant for that datafile, i need to turn unique()[0] to just unique()
             if 'weights' not in sim_results[rkey].data.columns:
                 sim_results[rkey].weights = np.ones(len(sim_results[rkey].data))
         self.age_results_keys = age_result_args.keys()
@@ -229,15 +228,8 @@ class Calibration(sc.prettyobj):
         sim.update_pars(new_pars)        #... and then update our sim with our new values for the adjustable parameters
         sim.initialize(reset=True, init_analyzers=False) # Necessary to reinitialize the sim here so that the initial infections get the right parameters
 
-        #define the callback function which will be called each year by our sim, to determine whether it should be pruned
+        #Define the callback function which will be called each year by our sim, to determine whether it should be pruned
         def callback(current_year):
-                                #          if current_year in self.years: #For testing; printing out the itnermediate goodness-of-fit values that have been computed
-                                #             print()
-                                    #            print(f"Results for year {current_year}")
-                                    #           print(f"    Age results gof: {self.get_cumulative_age_results_gof(sim,current_year)}")
-                                    #          print(f"    Sim results gof: {self.get_cumulative_sim_results_gof(sim,current_year)}")
-                                    #         print(f"    Total gof: {self.get_cumulative_gof(sim,current_year)}")
-
             if current_year in self.years:
                 #We only are able to consider pruning if we can compare our model's output to at least part of our dataset 
                 intermediate_gof = self.get_cumulative_gof(sim,current_year)
@@ -246,8 +238,6 @@ class Calibration(sc.prettyobj):
                 if trial.should_prune():
                     raise op.TrialPruned()
                 
-
-        
         # Run the sim
         try:
             if self.run_args.prune:
@@ -433,7 +423,6 @@ class Calibration(sc.prettyobj):
         '''
         Computes and returns the goodness of fit of our sim against any sim_results for which we have data (i.e. any data which is not split by age), up to a given year
         '''
-        #TODO: as in the existing non-cumulative version of this process, this is currently for a single timepoint per rkey and should be generalised
         fit = 0
 
         results = sim.compute_intermediate_states()
@@ -471,7 +460,7 @@ class Calibration(sc.prettyobj):
         '''
         Computes and returns the goodness of fit of the provided sim against all data we have avaliable, up to the given year
         '''
-        fit = 0  #TODO: maybe use np.inf instead? optuna documentation says it supports all float-like types for intermediate value reporting and specifies numpy.flaot32 as an example, but does it support this particular constnat of the type??
+        fit = 0  
 
         if len(self.age_result_years)>0:               #check whether any of our data is split by age
             if year_up_to >= min(self.age_result_years):            #If we have at least some age result data at or before the given end year, then compute its gof
@@ -484,7 +473,7 @@ class Calibration(sc.prettyobj):
 
 
     def run_trial(self, trial, save=True):
-        ''' Define the objective for Optuna ''' #TODO: (fabian) make a function that checks the fit of a model at a given timepoint, and then create a function which computes the fit *up to* a given timepoint instead, and then use this to implement reporting of intermediate values, and early stopping, within our sim. This would require a way to do 'callback functions' within the running of a sim, called back at every nth time jump (or maybe every time jump? but probably sticking to every nth timejumpo helps speed it up as calcualtion of the cumulative goodness of fit won't be the easiest thing in the world!)
+        ''' Define the objective for Optuna ''' 
         #(Using Optuna), sample values for every parameter which we are letting vary in this calibration.
         if self.genotype_pars is not None:
             genotype_pars = self.trial_to_sim_pars(self.genotype_pars, trial)
@@ -499,9 +488,7 @@ class Calibration(sc.prettyobj):
         else:
             calib_pars = None
 
-        #genotype_pars (resp. hiv_pars, calib_pars) are dictionaries in the same structure as they were when passed into the calibration object's constructor, ...
-        #... but instead of defining ranges in the form [best, lower, upper] for each parameter, the dictionary 'value' of each parameter 'key' is the single ...
-        #...parameter value we will be using in this trial
+        #genotype_pars (resp. hiv_pars, calib_pars) are dictionaries in the same structure as they were when passed into the calibration object's constructor, but instead of defining ranges in the form [best, lower, upper] for each parameter, the dictionary 'value' of each parameter 'key' is the single parameter value we will be using in this trial
 
 
         sim = self.run_sim(trial, calib_pars, genotype_pars, hiv_pars, return_sim=True) 
@@ -610,7 +597,7 @@ class Calibration(sc.prettyobj):
 
     def make_sampler(self, seed_offset:int = 0):
         '''Makes and returns a sampler according to the information in self.run_args. 
-           If seed_offset is not 0, adds it to the seed when creating the sampler'''
+           If we are specifying a random seed, adds seed_offset to it when creating the sampler'''
         op = import_optuna()
 
         #To use a given random seed for Optuna's parameter suggestion, add it to the constructor's parameter list
