@@ -817,6 +817,7 @@ class Calibration(sc.prettyobj):
 
         print(f"Calibration took {self.elapsed} seconds")
         print(f"Best parameters found in the calibration: {study.best_params}")
+        print("testing that this prints")
 
         
         if save_to_csv is not None:
