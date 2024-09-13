@@ -16,6 +16,14 @@ import plotly.graph_objects as go
 import plotly.io as pio
 import datetime
 
+from enum import Enum
+
+import random
+
+
+from optuna.study import MaxTrialsCallback
+from optuna.trial import TrialState
+
 
 __all__ = ['Calibration']
 
@@ -64,7 +72,9 @@ class Calibration(sc.prettyobj):
         rand_seed    (int)      : if provided, use this random seed to initialize Optuna runs (for reproducibility)
         sampler_type (str)      : choice of Optuna sampler type. Default value is "tpe". Options: ["random", "grid", "tpe", "cmaes", "nsgaii", "qmc", "bruteforce"]
         sampler_args (dict)     : argument-value pairs passed to the sampler's constructor. Refer to optuna documentation for relevant arguments for a given sampler type; https://optuna.readthedocs.io/en/stable/reference/samplers/index.html 
-        prune        (bool)     : whether or not to do pruning
+        pruning      (int)      : the kind of pruning to do (-1: no pruning; 1: basic pruning; 2: leaky pruning; 3: adaptive pruning) 
+        leakiness    (float)    : a value in [0,1] which determines the probability with which we will ignore optuna's suggestion for us to prune, if our pruning setting is Pruning.LEAKY_PRUNE
+                                    leakiness_coeff=0 => full pruning; leakiness_coeff=1 => no pruning
         label        (str)      : a label for this calibration object
         die          (bool)     : whether to stop if an exception is encountered (default: false)
         verbose      (bool)     : whether to print details of the calibration
@@ -89,10 +99,12 @@ class Calibration(sc.prettyobj):
     def __init__(self, sim, datafiles, calib_pars=None, genotype_pars=None, hiv_pars=None, fit_args=None, extra_sim_result_keys=None, 
                  par_samplers=None, n_trials=None, n_workers=None, total_trials=None, name=None, db_name=None, estimator=None,
                  keep_db=None, storage=None, 
-                 rand_seed=None, sampler_type=None, sampler_args=None, prune=True,
+                 rand_seed=None, sampler_type=None, sampler_args=None,
+                 pruning=-1, leakiness = None, pruner = None,
                  label=None, die=False, verbose=True):
 
         import multiprocessing as mp # Import here since it's also slow
+        op = import_optuna()
 
         # Handle run arguments
         if n_trials  is None: n_trials  = 20
@@ -102,7 +114,10 @@ class Calibration(sc.prettyobj):
         if keep_db   is None: keep_db   = False
         if storage   is None: storage   = f'sqlite:///{db_name}'
         if total_trials is not None: n_trials = int(np.ceil(total_trials/n_workers))
-
+        
+        self.name=name
+        self.total_trials = total_trials
+        
 
         if sampler_type is not None:
             if sampler_type not in ["random", "grid", "tpe", "cmaes", "nsgaii", "qmc", "bruteforce"]:
@@ -114,7 +129,21 @@ class Calibration(sc.prettyobj):
         
         self.run_args   = sc.objdict(n_trials=int(n_trials), n_workers=int(n_workers), name=name, db_name=db_name,
                                      keep_db=keep_db, storage=storage, 
-                                     rand_seed=rand_seed, sampler_type=sampler_type, sampler_args=sampler_args, prune=prune)
+                                     rand_seed=rand_seed, sampler_type=sampler_type, sampler_args=sampler_args)
+
+        #Set up pruning instance variables
+        if pruning not in [-1,1,2,3]:
+            raise "Invalid calibration argument for pruning (-1:no pruning ; 1:basic pruning ; 2:leaky pruning ; 3:adaptive pruning) "
+        self.pruning = pruning
+        if self.pruning == 2:
+            if leakiness is None:
+                raise "If using leaky pruning, must specify leakiness"
+            self.leakiness = leakiness
+        if pruner is None:
+            pruner =  op.pruners.HyperbandPruner(min_resource=1, max_resource=total_trials, reduction_factor=3)
+        self.pruner = pruner
+        print(f"This calibration instance has been given pruner {pruner}, pruning mode {pruning}, and leakiness {leakiness}.")
+        
 
         # Handle other inputs
         self.label          = label
@@ -131,6 +160,7 @@ class Calibration(sc.prettyobj):
         self.learning_curve = None                     #Assigned a value once self.calibrated = True
         self.contour        = None                     #Assigned a value once self.calibrated  =True
         self.timeline       = None                     #Assigned a value once self.calibrated = True
+        
 
         # Create age_results intervention
         self.target_data = []
@@ -212,7 +242,57 @@ class Calibration(sc.prettyobj):
             self.sim_end_year = sim['end']
             #... and the alternate case (sim['end'] < max(self.years) is not possible, as index out of bounds error will be thrown when validating our variables; see analysis.py's validate_variables function)
 
+        #Calculate the distribution of data over our years as a dictionary {year: proportion of datapoints from this year}
+        total_weight = 0
+        self.data_distribution = {}
+        for year in self.years:
+            weights = [] #a list of weight-arrays for datapoints in this year
+
+            #Populate with weights for sim results
+            tp = year - sim["start"] / (sim.resfreq * sim["dt"])   #year=timepoint*(sim.resfreq*sim["dt"])+sim["start"]   <=>      timepoint=year-sim["start"]/(sim.resfreq*sim["dt"])
+            for rkey in self.sim_results:
+                if tp in self.sim_results[rkey].timepoints: 
+                    weights.append(self.sim_results[rkey].weights)
+
+            #Populate with weights for age results
+            for az in sim.analyzers:
+                for rk, rdict in az.result_args.items():
+                    if rdict['years'][0] == year: #TODO: this assumes each analyzer only deals with one year at a time, can this be generalised (or does it even need to- perhaps analyzers are only allowed to deal with one year at a time anyway?)
+                        if 'compute_fit' in rdict.keys() and rdict.compute_fit:
+                            if rdict.data is None:
+                                errormsg = 'Cannot compute fit without data'
+                                raise ValueError(errormsg)
+                            else:
+                                if 'weights' in rdict.data.columns:
+                                    weights.append(rdict.data['weights'].values)
+                                else:
+                                    weights.append(np.ones(len(rdict.data)))
+            
+            year_weight = 0
+            for weight in weights:
+                year_weight += weight.sum()
+            self.data_distribution[year] = year_weight
+            total_weight += year_weight
+        
+        #Normalise our distribution
+        for year in self.years:
+            self.data_distribution[year] /= total_weight
+        
+
         return
+
+    def adaptive_prune_prob(self, year):
+        '''
+        For use when doing adaptive pruning
+        If optuna suggests we prune a simulation which is currently at year {year}, returns the probability that we will indeed prune, as opposed to 'leaking through' (a function of the proportion of data up to this year and the leakiness coefficient)
+        '''
+        prob = 0
+        for y in self.years:
+            if y > year:
+                break
+            prob += self.data_distribution[y]
+
+        return prob 
 
 
     def run_sim(self, trial, calib_pars=None, genotype_pars=None, hiv_pars=None, label=None, return_sim=False):
@@ -228,22 +308,41 @@ class Calibration(sc.prettyobj):
         sim.update_pars(new_pars)        #... and then update our sim with our new values for the adjustable parameters
         sim.initialize(reset=True, init_analyzers=False) # Necessary to reinitialize the sim here so that the initial infections get the right parameters
 
-        #Define the callback function which will be called each year by our sim, to determine whether it should be pruned
-        def callback(current_year):
-            if current_year in self.years:
-                #We only are able to consider pruning if we can compare our model's output to at least part of our dataset 
+        #Define the callback functions which will be called each year by our sim, to determine whether it should be pruned (one for each pruning variant)
+        def callback_basic_prune(current_year):
+            if current_year in self.years[0: -1]: #We only need to test whether to prune on years for which we have some data, and no pruning on final year
+                intermediate_gof = self.get_cumulative_gof(sim,current_year)
+                trial.report(intermediate_gof, current_year)
+                if trial.should_prune():
+                    raise op.TrialPruned()
+        
+        def callback_leaky_prune(current_year):
+            if current_year in self.years[0:-1]: #We only need to test whether to prune on years for which we have some data, and no pruning on final year
                 intermediate_gof = self.get_cumulative_gof(sim,current_year)
                 trial.report(intermediate_gof, current_year)
 
-                if trial.should_prune():
+                if trial.should_prune() and random.random() > self.leakiness: #prunes with independant prob 1-{self.leakiness} 
+                    raise op.TrialPruned()
+
+        def callback_adaptive_prune(current_year):
+            if current_year in self.years[0:-1]: #We only need to test whether to prune on years for which we have some data, and no pruning on final year
+                intermediate_gof = self.get_cumulative_gof(sim,current_year)
+                trial.report(intermediate_gof, current_year)
+
+                if trial.should_prune() and random.random() < self.adaptive_prune_prob(current_year): #prunes with independant prob {proportion of data considered so far}
                     raise op.TrialPruned()
                 
         # Run the sim
         try:
-            if self.run_args.prune:
-                sim.run(callback=callback, callback_annual = True)
-            else:
+            if self.pruning == -1:
                 sim.run()
+            elif self.pruning == 1:
+                sim.run(callback=callback_basic_prune, callback_annual = True)
+            elif self.pruning == 2:
+                sim.run(callback=callback_leaky_prune, callback_annual = True)
+            elif self.pruning == 3:
+                sim.run(callback=callback_adaptive_prune, callback_annual = True)
+            
             if return_sim:
                 return sim
             else:
@@ -253,8 +352,10 @@ class Calibration(sc.prettyobj):
             if isinstance(E, op.TrialPruned): #catch pruning and throw it on
                 raise op.TrialPruned()
             if self.die:
+                print("got a die exception")
                 raise E
             else:
+                print("got a diff error")
                 warnmsg = f'Encountered error running sim!\nParameters:\n{new_pars}\nTraceback:\n{sc.traceback()}'
                 hpm.warn(warnmsg)
                 output = None if return_sim else np.inf
@@ -472,9 +573,12 @@ class Calibration(sc.prettyobj):
         return fit
 
 
-    def run_trial(self, trial, save=True):
+    def run_trial(self, trial, save=True, wid=0):
         ''' Define the objective for Optuna ''' 
         #(Using Optuna), sample values for every parameter which we are letting vary in this calibration.
+      #  print(f"worker {wid} - starting trial {trial.number}")
+      #  print(f"worker {wid} about to query for parameters for trial {id(trial)}")# <-this is not where the deadlock is happening, I think, and I dont actually think this involves loading any files, I think the suggestion may come straight from the trial?
+
         if self.genotype_pars is not None:
             genotype_pars = self.trial_to_sim_pars(self.genotype_pars, trial)
         else:
@@ -487,6 +591,9 @@ class Calibration(sc.prettyobj):
             calib_pars = self.trial_to_sim_pars(self.calib_pars, trial)
         else:
             calib_pars = None
+
+      #  print(f"worker {wid}  completed query for parameters for trial {id(trial)}")
+
 
         #genotype_pars (resp. hiv_pars, calib_pars) are dictionaries in the same structure as they were when passed into the calibration object's constructor, but instead of defining ranges in the form [best, lower, upper] for each parameter, the dictionary 'value' of each parameter 'key' is the single parameter value we will be using in this trial
 
@@ -587,12 +694,21 @@ class Calibration(sc.prettyobj):
         if save:
             results = dict(sim=sim_results, analyzer=sim.get_analyzer('age_results').results,
                            extra_sim_results=extra_sim_results)
-            filename = self.tmp_filename % trial.number
+            filename = self.tmp_filename % trial.number     #Trial number is unique, so filename will be unique (pre: self.tmp_filename is unique)
             sc.save(filename, results)
 
+
         #Report values back to optuna 
-            
-        return self.get_cumulative_gof(sim, np.inf)
+        gof = self.get_cumulative_gof(sim, np.inf)
+
+     #   print(f"cGOF for {trial.number} successfully calcualted and is about to be returned, worker {wid} :)")
+        
+      #  print(f"worker {wid} - reporting GOF of trial {trial.number}")
+
+
+        return gof
+
+
 
 
     def make_sampler(self, seed_offset:int = 0):
@@ -622,6 +738,8 @@ class Calibration(sc.prettyobj):
         ''' Run a single worker.
             pre: 1<=id<=self.run_args.n_workers && each worker has a distinct id
         '''
+    #    print(f"Starting worker {id}")
+
         op = import_optuna()
         if self.verbose:
             op.logging.set_verbosity(op.logging.DEBUG)
@@ -629,10 +747,20 @@ class Calibration(sc.prettyobj):
             op.logging.set_verbosity(op.logging.ERROR)
 
         sampler = self.make_sampler(id) #Construct a sampler according to the data in self.run_args; we offset the seed by 'id' iff we are using a user-defined seed
-        study = op.load_study(storage=self.run_args.storage, study_name=self.run_args.name, sampler=sampler)
+        study = op.load_study(storage=self.run_args.storage, study_name=self.run_args.name, sampler=sampler, pruner=self.pruner)
 
-        output = study.optimize(self.run_trial, n_trials=self.run_args.n_trials, callbacks=None) #self.run_trial is our objective function (i.e. will take our study and use optuna's suggested value to get us a goodness-of-fit value which is returned). 
-        
+
+        #SPecial run_trial which just lets me make note of the worker id - this just exists for debugging purposes; run_trial does not need the id otherwise
+        def r_t(trial, save=True):
+            return self.run_trial(trial, save, id)
+
+        #Each worker tries to do up to all the trials on its own, but (provided at least one trial gets done by some other worker) will be stopped once all the desired trails have been compelted in the study. This allows for a worker that finishes its share early to continue helping out, adn if a worker fails, other workers can pick up the slack
+        if self.optuna_callback is None:
+            output = study.optimize(r_t, n_trials=self.total_trials, callbacks=[MaxTrialsCallback(self.total_trials, states=(TrialState.COMPLETE,TrialState.PRUNED))]) #self.run_trial is our objective function (i.e. will take our study and use optuna's suggested value to get us a goodness-of-fit value which is returned). 
+        else:
+            output = study.optimize(r_t, n_trials=self.total_trials, callbacks=[self.optuna_callback,MaxTrialsCallback(self.total_trials, states=(TrialState.COMPLETE,))]) #self.run_trial is our objective function (i.e. will take our study and use optuna's suggested value to get us a goodness-of-fit value which is returned). 
+      #  print(f"worker {id} is totally done, is it perhaps holding on to a key???")
+
         return output
 
 
@@ -640,7 +768,7 @@ class Calibration(sc.prettyobj):
         ''' Run multiple workers in parallel '''
         if self.run_args.n_workers > 1: # Normal use case: run in parallel
             worker_ids = list(range(1, self.run_args.n_workers+1))
-            output = sc.parallelize(self.worker, iterarg=worker_ids)
+            output = sc.parallelize(self.worker, iterarg=worker_ids, die=False) #die=False, so that if an individual worker encounters an excpetion, it doesnt kill the whole calibration, it just means that that specific worekr is dead. Any errors will be reported to the  user and also returned from this function. 
         else: # Special case: just run one
             output = [self.worker(0)]
         return output
@@ -650,6 +778,7 @@ class Calibration(sc.prettyobj):
         '''
         Remove the database file if keep_db is false and the path exists.
         '''
+        print("trying to remove db")
         try:
             op = import_optuna()
             op.delete_study(study_name=self.run_args.name, storage=self.run_args.storage)
@@ -658,10 +787,14 @@ class Calibration(sc.prettyobj):
         except Exception as E:
             print('Could not delete study, skipping...')
             print(str(E))
+
+
         if os.path.exists(self.run_args.db_name):
             os.remove(self.run_args.db_name)
             if self.verbose:
                 print(f'Removed existing calibration {self.run_args.db_name}')
+
+        print("removed db")
         return
     
 
@@ -673,11 +806,11 @@ class Calibration(sc.prettyobj):
         
         sampler = self.make_sampler()
 
-        output = op.create_study(storage=self.run_args.storage, study_name=self.run_args.name, sampler=sampler) 
+        output = op.create_study(storage=self.run_args.storage, study_name=self.run_args.name, sampler=sampler, pruner=self.pruner) 
         return output
 
 
-    def calibrate(self, calib_pars=None, genotype_pars=None, hiv_pars=None,  load=True, tidyup=True, plots=[], detailed_contplot = None, save_to_csv = None, **kwargs):
+    def calibrate(self, calib_pars=None, genotype_pars=None, hiv_pars=None,  load=True, tidyup=True, plots=[], detailed_contplot = None, save_to_csv = None, optuna_callback = None, **kwargs):
         '''
         Actually perform calibration.
 
@@ -702,6 +835,9 @@ class Calibration(sc.prettyobj):
             errormsg = 'You must supply calibration parameters (calib_pars or genotype_pars) either when creating the calibration object or when calling calibrate().'
             raise ValueError(errormsg)
         self.run_args.update(kwargs) # Update optuna settings (by updating the dictionary that holds the data we will pass)
+
+        self.optuna_callback = optuna_callback
+
 
         # Run the optimization
         t0 = sc.tic() #together with sc.toc() this will calculate how long the optimisation took
@@ -763,10 +899,13 @@ class Calibration(sc.prettyobj):
             indices_to_remove = [] #keep track of elements of trials to remove to avoid double searching (reduces time complexity from quadratic to linear)
             for i in range(len(trials)):
                 trial = trials[i]
-                if trial.datetime_complete <=time: #we have found a trial which has occured before the time being investigated right now
-                    if trial.value is not None and trial.value < best_obj_so_far:
-                        best_obj_so_far = trial.value
-                    indices_to_remove.append(i) #now we have counted this trial, can remove it
+                if trial is not None and trial.datetime_complete is not None: #if a trial ended in error, either of these could be the case, in whcih case, we dont plot it
+                    if trial.datetime_complete <=time: #we have found a trial which has occured before the time being investigated right now
+                        if trial.value is not None and trial.value < best_obj_so_far:
+                            best_obj_so_far = trial.value
+                        indices_to_remove.append(i) #now we have counted this trial, can remove it
+                else:
+                    indices_to_remove.append(i) #in the case that the trial ended in a failure which wasn't captured, and it is None or its datetime_complete property is None, then we can remove it here
             for i in reversed(indices_to_remove):
                 trials.pop(i)
             obj_times[time] = best_obj_so_far 
@@ -784,7 +923,8 @@ class Calibration(sc.prettyobj):
         self.extra_sim_results = []
         self.unloadable_study_indices= [] #indices of studies which failed to load; these cannot be queried for data to plot
         if load:
-            print('Loading saved results...')
+            if self.verbose:
+                print('Loading saved results...')
             for trial in study.trials:
                 n = trial.number
                 try:
@@ -796,32 +936,40 @@ class Calibration(sc.prettyobj):
                     if tidyup:
                         try:
                             os.remove(filename)
-                            print(f'    Removed temporary file {filename}')
+                            if self.verbose:
+                                print(f'    Removed temporary file {filename}')
                         except Exception as E:
                             errormsg = f'Could not remove {filename}: {str(E)}'
-                            print(errormsg)
-                    print(f'  Loaded trial {n}')
+                            if self.verbose:
+                                print(errormsg)
+                    if self.verbose:
+                        print(f'  Loaded trial {n}')
                 except Exception as E:
                     errormsg = f'Warning, could not load trial {n}: {str(E)}'
                     self.unloadable_study_indices.append(n)
-                    print(errormsg)
+                    if self.verbose:
+                        print(errormsg)
 
         # Compare the results
         self.initial_pars, self.par_bounds = self.sim_to_sample_pars()
         self.parse_study(study) #parses the study into a dataframe
 
+        
+        
+        print("Calibration info:")
+        print(f"\tCalibration took {self.elapsed} seconds")
+        print(f"\tstudy info:{study.__dict__}")
+        print(f"\tBest parameters found in the calibration: {study.best_params}")
+
+        if save_to_csv is not None:
+            study.df.to_csv(save_to_csv)
+
         # Tidy up
         self.calibrated = True #i.e. this calibration object has now been used for a calibration
         if not self.run_args.keep_db:
-            self.remove_db()
-
-        print(f"Calibration took {self.elapsed} seconds")
-        print(f"Best parameters found in the calibration: {study.best_params}")
-        print("testing that this prints")
+            self.remove_db() 
 
         
-        if save_to_csv is not None:
-            study.df.to_csv(save_to_csv)
 
 
         return self
@@ -848,6 +996,10 @@ class Calibration(sc.prettyobj):
             else:
                 results.append(data)
         print(f'Processed {n_trials} trials; {len(failed_trials)} failed, {len(pruned_trials)} pruned')
+
+        self.processed_trials = n_trials
+        self.failed_trials = len(failed_trials)
+        self.pruned_trials = len(pruned_trials)
 
         keys = ['index', 'mismatch'] + list(best.keys())
         data = sc.objdict().make(keys=keys, vals=[])
@@ -1058,20 +1210,27 @@ class Calibration(sc.prettyobj):
 
         return hppl.tidy_up(fig, do_save=do_save, fig_path=fig_path, do_show=do_show, args=all_args)
     
-    def plot_learning_curve(self):
+    def plot_learning_curve(self, title=None):
         '''
         Plot the learning curve for our most recent calibration.
 
         Pre: calibated
 
-        Returns a plotly instance of the learning curve
+        title: a string to be the timeline title, else uses default title
+
+
+        Returns a plotly instance of the learning curve (a deep copy of the one saved in this object)
         '''
         if not self.calibrated:
             raise UncalibratedException("Cannot plot chart - check that you have run a calibration on this object, and that you have chosen to plot this chart in the calibration process.")
 
-        self.learning_curve.show() #this plot is defined in the calibrate function
+        lc = sc.dcp(self.learning_curve)
 
-        return self.learning_curve
+        if title is not None:
+            lc.update_layout(title = title)
+
+        lc.show()
+        return lc
 
     def plot_contour(self):
         '''
@@ -1088,20 +1247,27 @@ class Calibration(sc.prettyobj):
 
         return self.contour
 
-    def plot_timeline(self):
+    def plot_timeline(self, title=None):
         '''
         Plot the timeline of the calibration
 
         Pre: calibated
 
-        Returns a plotly instance of the timeline
+        title: a string to be the timeline title, else uses default title
+
+        Returns a plotly instance of the timeline (deep copy of the one stored in the calibration object)
         '''
         if not self.calibrated:
             raise UncalibratedException("Cannot plot chart - check that you have run a calibration on this object, and that you have chosen to plot this chart in the calibration process.")
+        
+        tl = sc.dcp(self.timeline)
 
-        self.timeline.show() #this plot is defined in the calibrate function
+        if title is not None:
+            tl.update_layout(title=title)
 
-        return self.timeline
+        tl.show()
+        return tl
+
 
     def get_objective_time_dictionary(self):
         '''

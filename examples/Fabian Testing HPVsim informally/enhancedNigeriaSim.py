@@ -2,7 +2,7 @@
 
 import numpy as np
 import sciris as sc
-import hpvsim as hpv
+import hpvsim as hpv 
 
 if __name__=="__main__":
     #Parameterise our sim with parameters from calibration (marked with a (*))

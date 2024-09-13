@@ -1,0 +1,8 @@
+(pmode=-1, pruner=<optuna.pruners._hyperband.HyperbandPruner object at 0x000001FAA148B080>, seed=2): (final loss=21.03066426428328, duration=2.883193254470825, trials processed=5, failed=0, pruned=0)
+(pmode=-1, pruner=<optuna.pruners._hyperband.HyperbandPruner object at 0x000001E387B476E0>, seed=3): (final loss=21.03066426428328, duration=3.0570085048675537, trials processed=5, failed=0, pruned=0)
+(pmode=1, pruner=<optuna.pruners._hyperband.HyperbandPruner object at 0x0000012D3901E6C0>, seed=2): (final loss=21.03066426428328, duration=3.428680658340454, trials processed=5, failed=0, pruned=0)
+(pmode=1, pruner=<optuna.pruners._hyperband.HyperbandPruner object at 0x000001FBF20EE4E0>, seed=3): (final loss=21.03066426428328, duration=3.4409756660461426, trials processed=5, failed=0, pruned=0)
+(pmode=1, pruner=<optuna.pruners._median.MedianPruner object at 0x00000204CAE86B10>, seed=2): (final loss=21.03066426428328, duration=3.303248643875122, trials processed=5, failed=0, pruned=0)
+(pmode=1, pruner=<optuna.pruners._median.MedianPruner object at 0x0000017F08FA3170>, seed=3): (final loss=21.03066426428328, duration=3.1037757396698, trials processed=5, failed=0, pruned=0)
+(pmode=1, pruner=<optuna.pruners._successive_halving.SuccessiveHalvingPruner object at 0x000002304A193B60>, seed=2): (final loss=21.03066426428328, duration=3.128596067428589, trials processed=5, failed=0, pruned=0)
+(pmode=1, pruner=<optuna.pruners._successive_halving.SuccessiveHalvingPruner object at 0x000001D2CCDD3AA0>, seed=3): (final loss=21.03066426428328, duration=3.0823328495025635, trials processed=5, failed=0, pruned=0)

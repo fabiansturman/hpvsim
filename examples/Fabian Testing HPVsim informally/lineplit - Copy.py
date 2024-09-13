@@ -29,7 +29,7 @@ def normal_confidence_interval(data, alpha):
         for x in data:
             S2 += (x-Xbar) ** 2
         S2 /= (n-1)
-        S = S2 ** 0.5
+        S = S2 ** 0.5 #sample standard deviation
 
         #Calculate CI
         offset = scipy.stats.t.cdf(1-alpha/2, n-1) * S/(n ** 0.5)

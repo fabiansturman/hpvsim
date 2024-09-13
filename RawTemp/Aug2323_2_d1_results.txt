@@ -1,0 +1,4 @@
+(pmode=1, pruner=<optuna.pruners._successive_halving.SuccessiveHalvingPruner object at 0x000002641DF8ADB0>, seed=10): (final loss=16.111182050128683, duration=4.722391366958618, trials processed=5, failed=0, pruned=0)
+(pmode=1, pruner=<optuna.pruners._successive_halving.SuccessiveHalvingPruner object at 0x000001C61DA8B200>, seed=11): (final loss=15.54519088503827, duration=4.807762622833252, trials processed=5, failed=0, pruned=1)
+(pmode=1, pruner=<optuna.pruners._successive_halving.SuccessiveHalvingPruner object at 0x000002264C44AF60>, seed=12): (final loss=16.111182050128683, duration=5.239675283432007, trials processed=5, failed=0, pruned=0)
+(pmode=1, pruner=<optuna.pruners._successive_halving.SuccessiveHalvingPruner object at 0x00000225496AB140>, seed=13): (final loss=15.814710703932953, duration=4.916393995285034, trials processed=5, failed=0, pruned=2)

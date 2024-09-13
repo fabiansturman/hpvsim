@@ -1,0 +1,6 @@
+-----------------RESULTS (<optuna.pruners._median.MedianPruner object at 0x000002CA7F7DF680>)-----------------
+{1: [1.0, 1.0], 0.5: [1.0, 1.0], 0: [1.0, 1.0]}
+------------------------------------------
+-----------------TRIALS MANAGED-(ensure these are about the same for each leakiness, to demonstrate computer is giving a 'fair chance' to each)----------------
+{1: [4, 4], 0.5: [4, 4], 0: [4, 4]}
+------------------------------------------

@@ -8,6 +8,13 @@ import numpy as np
 import multiprocess
 import multiprocess.pool
 
+import optuna as op
+
+'''
+This file defines a version of the Calibration class which can perform several calibrations independantly and concurrently.
+This allows for calibrations to be run with several seeds at the same time - particularly useful when there are enough resources to run...
+... a calibration beyond the point where it converges, at which point it may be beneficial to run a new calibration with a different seed.
+'''
 
 
 def import_optuna():
@@ -41,7 +48,7 @@ class UncalibratedException(Exception):
     '''
     pass
 
-class Multirunner:
+class MultiCalibration:
     '''
     A class which handles running several instances of a calibration in parelell, each with a different seed, and then formatting/outputting results in useful ways. 
 
@@ -57,11 +64,17 @@ class Multirunner:
             If workers<=len(seeds), our outcome is deterministic - as each seed's calibration is performed independantly and its hpvsim instance is seeded according to the seed (+len(seeds))
 
     Instance variables of the class:
-        calibrations    = a list of all the calibrations objects which we wil calibrate in parelell
+        calibrations    = a list of all the calibrations objects which we will calibrate in parelell
 
     '''
 
-    def __init__(self, sim, seeds=[0],workers=None, name="",calibrate_args={},**kwargs):
+    def __init__(   self, 
+                    sim,
+                    seeds=[0],
+                    workers=None, 
+                    name="",
+                    calibrate_args={},
+                    **kwargs):
         if workers is None or workers<len(seeds): 
             workers=len(seeds)
         
@@ -69,20 +82,21 @@ class Multirunner:
         self.calibrations = []
         for seed in seeds:
             sim_dcp = sc.dcp(sim) #set up the simulation for this calibration instance
-            sim_dcp["rand_seed"] = len(seeds) + seed #so that random values from our simulation are unrelated to those picked by optuna
+            sim_dcp["rand_seed"] = len(seeds) + seed #so that random values from our simulation are unrelated to those picked by optuna (by offsetting our seed in a way which also gives a seed unique across the whole program)
 
             calib_name = name + "_calibInstance" + str(seed)
             kwargs["name"] = calib_name #add this name to the dictionary of arguments we will pass to our calibration instance
             kwargs["rand_seed"] = seed
-
+            
             #give this calibration instance the appropriate number of workers
             if workers>=len(seeds):
-                #Distribute our workers amongst our seeds. Each seed gets at either {workers//len(seeds)} workers or {1 + workers//len(seeds)} 
+                # At least as many workers as we have seeds
+                # Distribute our workers amongst our seeds. Each seed gets at either {workers//len(seeds)} workers or {1 + workers//len(seeds)} 
                 if workers % len(seeds) > 0:
-                    kwargs["n_workers"] = workers//len(seeds) + 1 #we have spare workers when dividing by the number of seeds we have, so offer an extra worker to this seed
+                    kwargs["n_workers"] = workers//len(seeds) + 1 #we have spare workers when dividing by the number of seeds we have, so offer an extra worker to this seed. 
                     workers -=1 #to keep track of one of our 'excess' workers being allocated to this seed
                 else:
-                    kwargs["n_workers"] = workers//len(seeds) #we have no (more) 'excess' workers to allocate
+                    kwargs["n_workers"] = workers//len(seeds) #we have no (more) 'excess' workers to allocate; the number of workers we have is a multiple of the number of seeds we have
             else:
                 #If we have more seeds than we have workers, we have every calibration isntance have a sigle worker, and then our scheduler here (the NoDaemonProcessPool) splits the seeds up between our workers, with each worker processing seeds sequentially
                 kwargs["n_workers"] = 1
@@ -90,7 +104,8 @@ class Multirunner:
             calib = hpv.Calibration(sim_dcp, **kwargs)
             self.calibrations.append(calib)
         
-
+        self.name=name
+        self.seeds = seeds
         self.calibrate_args = calibrate_args
         self.calibrated = False 
         self.df         = None          #If self.calibrated, this stores a dataframe of all the trials that have been run across all calibrations
@@ -100,10 +115,20 @@ class Multirunner:
 
     def worker(self, calibration):
         '''
-        Runs calibration.calibrate(), returns this result
-        '''
-        return calibration.calibrate(**self.calibrate_args) #returns the object calibration, calibrated
+        calibration: HPVsim.Calibration instance
 
+        Runs calibration.calibrate() for the provided Calibration instance, returns this result
+        '''
+        cal = calibration.calibrate(**self.calibrate_args) #cal is the calibrated Calibration object
+
+        #Save information from the calibration
+        final_loss = cal.learning_curve.data[1].y[-1]
+        pruning_mode = cal.pruning
+        pruner = cal.pruner
+        with open(f"{self.name}_results.txt", "a") as f:
+            print(f"(pmode={pruning_mode}, pruner={pruner}, seed={cal.sim["rand_seed"]}): (final loss={final_loss}, duration={cal.elapsed}, trials processed={cal.processed_trials}, failed={cal.failed_trials}, pruned={cal.pruned_trials})", file=f)
+
+        return cal
 
     def calibrate(self):
         '''
@@ -112,7 +137,7 @@ class Multirunner:
         #We run the calibrations
         if len(self.calibrations) > 1:
             with NoDaemonProcessPool(len(self.calibrations)) as pool:
-                output = sc.parallelize(self.worker, iterarg=self.calibrations, parallelizer=pool.map)
+                output = sc.parallelize(self.worker, iterarg=self.calibrations, parallelizer=pool.map)    #Iterates through each calibration, running each cal on a new thread. Each cal them instantiates a new thread for each worker in it - so C calibrations each with W workers will require C + CW threads if W>1, and C threads if W=1.
         else: #If we just need to run one worker, no need to use multiprocessing
             output = [self.worker(self.calibrations[0])]
 
@@ -171,7 +196,7 @@ class Multirunner:
         return self.df.head(n) 
 
     
-    def normal_confidence_interval(self,data, alpha):
+    def normal_confidence_interval(self, data, alpha):
         '''
         Returns (l,u) where l and u are the lower and upper bounds respectively of the 100(1-alpha)%-confidence interval for the mean of the provided list of data.
         We assume the data is normally distributed.
@@ -237,7 +262,7 @@ class Multirunner:
 
     def get_learning_curves_CI(self, title="", name='trace 1', colour='green'):
         '''
-        Returns a as a plotly.graph_objects.Figure instance, showing a 95% CI for the learning curve at each point of calibration, calcualted from the calibrations performed by this Multirunner instance
+        Returns a as a plotly.graph_objects.Figure instance, showing a 95% CI for the learning curve at each point of calibration, calcualted from the calibrations performed by this MultiCalibration instance
         '''
         if not self.calibrated:
             raise UncalibratedException("this instance has not yet been calibrated")
@@ -293,7 +318,7 @@ class Multirunner:
 
     def get_calibration_times(self):
         '''
-        Returns a list of the times it took to calibrate each of the Calibration instances in this multirunner 
+        Returns a list of the times it took to calibrate each of the Calibration instances in this multicalibration 
         '''
         if not self.calibrated:
             raise UncalibratedException("this instance has not yet been calibrated")
@@ -308,26 +333,32 @@ class Multirunner:
 
 ##############
 
-def make_multirunner(name,prune:bool, seeds=10):
+def make_multical(name,
+                     seeds=[1,2],
+                     n_workers = 20,
+                     n_agents = 5*10e3,
+                     n_trials = 5000,
+                     leakiness = 1,
+                     pruning = -1, #-1:no pruning ; 1:basic pruning ; 2:leaky pruning ; 3:adaptive pruning
+                     pruner = None,
+                     datafiles = [],
+                     verbose = True
+                     ):
     '''
-    Sets up and returns a multirunner instance
+    Sets up and returns a multicalibration instance with the desired number seeds, and the specified pruning information
     '''
-    rss = list(range(seeds))
+    rss = seeds
 
-    pars = dict(n_agents=5*10e3, 
-                start=1980,
+    pars = dict(n_agents=n_agents,
+                start=1975,
                 end=2023, 
                 dt=0.25, 
                 location='nigeria', #united kingdom
-                genotypes=[16, 18, 'hi5'],
                 verbose = 0, #1 means verbose, 0 means not verbose
                 )
     sim = hpv.Sim(pars)
 
-    calib_pars = dict(
-            beta=[0.25, 0.010, 0.7],
-            hpv_control_prob=[.2, 0, 1]
-        )
+    #Parameters for calibration
     genotype_pars = dict(
         hpv16=dict(
             cin_fn=dict(k=[0.5, 0.2, 1.0]),
@@ -336,42 +367,158 @@ def make_multirunner(name,prune:bool, seeds=10):
         hpv18=dict(
             cin_fn=dict(k=[0.5, 0.2, 1.0]),
             dur_cin=dict(par1=[6, 4, 12])
-        ),
-        hi5=dict(
-            cin_fn=dict(k=[0.5, 0.2, 1.0]),
-            dur_cin=dict(par1=[6, 4, 12])
         )
     )
-
-    datafiles=[ 'docs\\tutorials\\nigeria_cancer_cases_truncated.csv',
-                'augmented2000data1',
-                'augmented2000data2',
-                ]
+    calib_pars = dict(
+            beta=[0.05, 0.010, 0.20],
+            f_cross_layer= [0.05, 0.01, 0.2],
+            m_cross_layer= [0.05, 0.01, 0.2],
+          #  condoms = [0.27,0.1,0.38],
+        )
+   
+    results_to_plot = []#'cancer_incidence', 'asr_cancer_incidence']
     
-    results_to_plot = ['cancer_incidence', 'asr_cancer_incidence']
-    
 
-    multirunner = Multirunner(sim=sim, seeds=rss, workers=20, 
+    mc = MultiCalibration(sim=sim, seeds=rss, workers=n_workers, 
                                 name=name,
                                 calibrate_args={'plots':["learning_curve", "timeline"]},
                                 calib_pars=calib_pars,
                                 genotype_pars=genotype_pars,
                                 extra_sim_result_keys=results_to_plot,
                                 datafiles=datafiles,
-                                total_trials=5000,
+                                total_trials=n_trials,
                                 keep_db=True, 
                                 sampler_type = "tpe",
                                 sampler_args = None, 
-                                prune = prune )
+                                leakiness = leakiness,
+                                pruning = pruning,
+                                pruner = pruner,
+                                verbose = verbose)
     
-    return multirunner
+    return mc
 
 
 if __name__ == "__main__":
+    #parameters - we are doing 4 pruning setups (3 with pruners and 1 with no pruning) and have 16 threads available, so can run 4 calibrations concurrently per setup (this computer has 20 theads, but 19 usable due to this program also taking a thread)
+    name = "C:\\Users\\fabia\\Documents\\GitHub\\hpvsim\\RawTemp\\Aug2223_2"
+    seeds = [0,1,2,3,4]#Trying 5 seeds to see if it still takes between 9-10 times as long to run any given one of those cals compared to leaving all 20 workers to that cal, and that these times are pretty consistnet (as this main calling thread should be able to sleep)
+    n_workers = 1   #number of workers per calibration
+    n_agents = 10e3
+    n_trials = 5000
+    leakiness = 1
+    pruning = 1 #-1:no pruning ; 1:basic pruning ; 2:leaky pruning ; 3:adaptive pruning
+    verbose = True #set to True for output at the end of every completed trial
+    datafiles =  [ 
+                  'Set 4\\cancer_incidence_2000.csv',
+                  'Set 4\\cancers_2010.csv',
+                  'Set 4\\hpv_prevalence_2020.csv',
+                ]
+    
+
+    pruners = [op.pruners.HyperbandPruner(min_resource=1, max_resource=n_trials, reduction_factor=3),
+               op.pruners.MedianPruner(),
+               op.pruners.SuccessiveHalvingPruner(), #the default reduction factor for successive halving is 4. Making it 3 makes it prune the same proportion of trials as hyperband
+                ] #NOTE THAT THE NUMBER OF PRUNERS I AM USING HERE ISs FIXED IN THE SUCCEEDING CODE, DONT CHANGE THIS
+
+    
+
+    #set up multicalibrations
+    mc = make_multical(name = f"{name}_np",
+                          seeds=seeds,
+                          n_workers=n_workers,
+                          n_agents = n_agents,
+                          n_trials = n_trials,
+                          pruning=-1,            #The initial {4} calibrations in this multicalibration are without pruning
+                          datafiles=datafiles,
+                          verbose = verbose)
+    mc_p0 = make_multical(name = f"{name}_p0",
+                          seeds=seeds,
+                          n_workers=n_workers,
+                          n_agents = n_agents,
+                          n_trials = n_trials,
+                          leakiness=leakiness,
+                          pruning=pruning,
+                          pruner = pruners[0],
+                          datafiles=datafiles,
+                          verbose = verbose)
+    mc_p1 = make_multical(name = f"{name}_p1",
+                          seeds=seeds,
+                          n_workers=n_workers,
+                          n_agents = n_agents,
+                          n_trials = n_trials,
+                          leakiness=leakiness,
+                          pruning=pruning,
+                          pruner = pruners[1],
+                          datafiles=datafiles,
+                          verbose = verbose)
+    mc_p2 = make_multical(name = f"{name}_p2",
+                          seeds=seeds,
+                          n_workers=n_workers,
+                          n_agents = n_agents,
+                          n_trials = n_trials,
+                          leakiness=leakiness,
+                          pruning=pruning,
+                          pruner = pruners[2],
+                          datafiles=datafiles,
+                          verbose = verbose)
+    
+    #Add the calibrations of the pruning multicalibrations to our main multicalibration, to make a big multicalibration to do 4 types at the same time
+        #This is not explicitly supported by the Multicalibration interface; but we are just adding extra calibrations to it to do. 
+    mc.calibrations += mc_p0.calibrations 
+    mc.calibrations += mc_p1.calibrations 
+    mc.calibrations += mc_p2.calibrations 
+    mc.seeds = mc.seeds*4 #this is just done so that there is a 1-2-1 correspondance between seeds in mc.seeds and (the seeds of) each calibration in mc.calibrations, for the plots made by this test rig
+
+    #Calibrate all
+    mc.calibrate()
+
+    #Plot superimposed learning curve
+    plt = mc.get_learning_curves(title = f"Learning curves for this multicalibration")
+    plt.show()
+
+    seeds = len(mc_p0.seeds) #now 'seeds' is the number of seeds we are using  
+
+    #Plot timeline and learning curve for each calibration individually
+    i = 0
+    for c in mc.calibrations:
+        seed = mc.seeds[i]
+        cal_type = i // seeds #cal_type = 0/1/2/3, meaning no pruning/hyperband/median/successive halving respectively
+        c.plot_learning_curve(title=f"Learning curve for seed {seed}, cal_type={cal_type}")
+        c.plot_timeline(title=f"Timeline for seed {seed}, cal_type={cal_type}")
+        i+=1
+
+    #Make and plot a boxplot of calibration times - for each multicalibration 
+    all_durations = mc.get_calibration_times()
+    durations_np = all_durations[0:seeds]
+    durations_p0 = all_durations[seeds:2*seeds]
+    durations_p1 = all_durations[2*seeds:3*seeds]
+    durations_p2 = all_durations[3*seeds:4*seeds]
+    dic = {'Time': durations_np + durations_p0 + durations_p1 + durations_p2,
+       'Dataset': ["Nigeria"]*len(all_durations),
+       'Pruning': ['No']*len(durations_np) + ['Hyperband']*len(durations_p0) + ['Median']*len(durations_p1) + ['Succ. Halving']*len(durations_p2)}
+    df = pd.DataFrame(dic)
+    fig = px.box(df,x="Dataset", y="Time", color="Pruning")
+    print(f"All durations (each {seeds} is a different pruning mode -  no prune/hyperband/median/sc): {all_durations}")
+    fig.show()
+    
+
+    
+    #Plot best fits of the cal
+    i=0
+    for c in mc.calibrations:
+        seed = mc.seeds[i]
+        cal_type = i // seeds #cal_type = 0/1/2/3, meaning no pruning/hyperband/median/successive halving respectively
+        print(f"seed {seed}, cal_type={cal_type}")
+        c.plot(res_to_plot=5)
+        i+=1
+
+
+    
+
+    '''
     #Intantiate multirunner(s)
-    seeds =10
-    multirunner_prune = make_multirunner(prune=True, name="CalibrationRawResults\\hpvsim_calubration_4Mar2024p_9_", seeds=seeds)
-    multirunner_noprune = make_multirunner(prune=False, name="CalibrationRawResults\\hpvsim_calubration_4Mar2024np_9_", seeds=seeds)
+    multirunner_prune = make_multirunner(prune=True, name="C:\\Users\\fabia\\Documents\\GitHub\\hpvsim\\RawTemp\\", seeds=seeds)
+    multirunner_noprune = make_multirunner(prune=False, name="C:\\Users\\fabia\\Documents\\GitHub\\hpvsim\\RawTemp\\hpvsim_calubration_4Mar2024np_9_", seeds=seeds)
 
     #Calibrate multirunner(s)
     multirunner_prune.calibrate()
@@ -451,6 +598,7 @@ if __name__ == "__main__":
     print(f"prunepoints={prunepoints}")
     input("press enter to get noprunepoints")
     print(f"noprunepoints={noprunepoints}")
+    '''
 
 
 

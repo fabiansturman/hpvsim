@@ -1,0 +1,4 @@
+(pmode=-1, pruner=<optuna.pruners._hyperband.HyperbandPruner object at 0x0000018E5F7FB140>): (final loss=21.03066426428328, duration=2.655810832977295, trials processed=5, failed=0, pruned=0)
+(pmode=1, pruner=<optuna.pruners._hyperband.HyperbandPruner object at 0x000002228BE479E0>): (final loss=21.03066426428328, duration=2.868103504180908, trials processed=5, failed=0, pruned=0)
+(pmode=1, pruner=<optuna.pruners._median.MedianPruner object at 0x000001E46D751F10>): (final loss=21.03066426428328, duration=2.707618236541748, trials processed=5, failed=0, pruned=0)
+(pmode=1, pruner=<optuna.pruners._successive_halving.SuccessiveHalvingPruner object at 0x00000267935D0740>): (final loss=21.03066426428328, duration=2.6897006034851074, trials processed=5, failed=0, pruned=0)

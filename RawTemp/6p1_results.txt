@@ -1,0 +1,10 @@
+-
+-----------------RESULTS (<optuna.pruners._hyperband.HyperbandPruner object at 0x0000024097BEFFB0>)-----------------
+{0: [19.42168546847755]}
+------------------------------------------
+-----------------TRIALS MANAGED-(ensure these are about the same for each leakiness, to demonstrate computer is giving a 'fair chance' to each)----------------
+{0: [5]}
+------------------------------------------
+-----------------DURATIONS----------------
+{0: [3.920057773590088]}
+------------------------------------------

@@ -1013,7 +1013,7 @@ class Sim(hpb.BaseSim):
                         sc.progressbar(self.t+1, self.npts, label=string, length=20, newline=True)
 
             # Do the heavy lifting -- actually run the model!
-            self.step()
+            self.step() 
 
             #Callback section - for checking whether we need to kill this run
             if callback is not None:
@@ -1022,12 +1022,14 @@ class Sim(hpb.BaseSim):
                     callback(np.floor(self.t * self["dt"] + self["start"] - 1 ))
                 else:
                     #In this case, we pass our current timestep, self.t, to the callback function
-                    callback(self.t) 
+                    callback(self.t)  
 
         # If simulation reached the end, finalize the results
         if self.complete:
+           # print(f"sim {id(self)} about to finalize")    
             self.finalize(verbose=verbose, restore_pars=restore_pars)
             sc.printv(f'Run finished after {elapsed:0.2f} s.\n', 1, verbose)
+            #print(f"sim {id(self)} finished finalizing and printed run info")    
 
 
         return self

@@ -85,7 +85,7 @@ if __name__ == "__main__":#to allow for using several workers in parellell
 
     # List extra results that we don't have data on, but wish to include in the
     # calibration object so we can plot them.
-    results_to_plot = ['cancer_incidence', 'asr_cancer_incidence']
+    results_to_plot = []#'n_infected']#'cancer_incidence', 'asr_cancer_incidence']
 
     # Create the calibration object, run it, and plot the results
     calib = hpv.Calibration(
@@ -94,13 +94,13 @@ if __name__ == "__main__":#to allow for using several workers in parellell
         genotype_pars=genotype_pars,
         extra_sim_result_keys=results_to_plot,
         datafiles=datafiles,
-        total_trials=10, n_workers=1, 
+        total_trials=2, n_workers=1, 
         keep_db=True, #for some reason there is a bug where if i set keep_db to its default value of false, i get a WinError 32 (the process cannot access the file because it is being used by another process) relating to line 431 of calibration.py
-        name="CalibrationRawResults\\hpvsim_calubration_13June24_5_",
+        name="CalibrationRawResults\\hpvsim_calubration_13June24_11_",
         rand_seed = rand_seed, #rand_seed, #Keeping random seed constant for reproducibility (random seed is used for optuna runs)
         sampler_type = "tpe",       #Accepted values are  ["random", "grid", "tpe", "cmaes", "nsgaii", "qmc", "bruteforce"]
         sampler_args = None, # dict(constant_lia r=True), # dict(multivariate=True, group=True, constant_liar=True)       # Refer to optuna documentation for relevant arguments for a given sampler type; https://optuna.readthedocs.io/en/stable/reference/samplers/index.html 
-        prune = False, #when pruning, we can suppress warnings with the flag python -W ingore foo.py, when running file foo.py in command prompt.
+        pruning = -1, #when pruning, we can suppress warnings with the flag python -W ingore foo.py, when running file foo.py in command prompt.
                         #TODO: get warnings due to division by zero to go away, first by suppressing them in-code and then by not doing unnecessary calculations in the first place!
         
     )
@@ -124,7 +124,7 @@ if __name__ == "__main__":#to allow for using several workers in parellell
     best_pars = calib.trial_pars_to_sim_pars() # Returns best parameters from calibration in a format ready for sim running
     sim.update_pars(best_pars)
 
-    sim.run()
+    #sim.run()
   #  a = sim.get_analyzer()
    # a.plot()
-    sim.plot()
+    #sim.plot()

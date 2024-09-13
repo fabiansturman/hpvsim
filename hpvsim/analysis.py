@@ -16,6 +16,26 @@ from . import interventions as hpi
 from .settings import options as hpo # For setting global options
 
 
+
+
+def nonNaN_divide(a, b):
+    '''
+    Pre:
+        a, b scalars
+
+    Special division operation; defines 0/0:=0 and behaves as np.divide for all other divisions.
+    Used for calculating rates when the numerator is the cardinality of a subset of the set for which b is the cardinality; when both sets are 0 we default the rate to 0.
+    (e.g. a=#women with HPV, b=#women)  
+    '''
+    if a==0 and b==0:
+        return 0
+    else:
+        return np.divide(a, b)
+    
+nonNaN_ew_divide = np.vectorize(nonNaN_divide) #An operator which behaves as nonNaN_divide, for elementwise operation on numpy types
+    # Note on efficiency: np.vectorise is 'essentially a for loop' (https://numpy.org/doc/stable/reference/generated/numpy.vectorize.html). This is not an efficiency concern as long as individual simulations remain single-threaded, which is the case as of writing (July 2024).
+
+
 __all__ = ['Analyzer', 'snapshot', 'age_pyramid', 'age_results', 'age_causal_infection',
            'cancer_detection', 'daly_computation', 'analyzer_map']
 
@@ -69,6 +89,7 @@ class Analyzer(sc.prettyobj):
         if self.finalized:
             raise RuntimeError('Analyzer already finalized')  # Raise an error because finalizing multiple times has a high probability of producing incorrect results e.g. applying rescale factors twice
         self.finalized = True
+
         return
 
 
@@ -713,7 +734,7 @@ class age_results(Analyzer):
                     if 'weights' in rdict.data.columns:
                         rdict.weights = rdict.data['weights'].values
                     else:
-                        rdict.weights = np.ones(len(rdict.data))
+                        rdict.weights = np.ones(len(rdict.data)) 
                     rdict.mismatch = 0  # The final value
 
 
@@ -777,7 +798,7 @@ class age_results(Analyzer):
                     unique_genotypes = thisdatadf.genotype.unique()
                     ng = len(unique_genotypes)  # CAREFUL, THIS IS OVERWRITING
 
-                # Figure out if it's a flow
+                # Figure out if it's a flow (i.e. a differnece in some stock value over time)
                 if rdict.result_type == 'flow':
                     if not rdict.by_genotype:  # Results across all genotypes
                         if rkey == 'detected_cancer_deaths':
@@ -810,8 +831,8 @@ class age_results(Analyzer):
                             inds = ppl[rdict.attr][g, :].nonzero()[-1]
                             self.results[rkey][date][g, :] = bin_ages(inds, bins)  # Bin the people
 
-            # On the final timepoint in the year, normalize
-            if sim.t in rdict.timepoints:
+            # On the final timepoint in the year, normalize. We define 0/0:=0 here, as in these cases we are calculating proportions of subpopulations size 0, and will have such rates as 0 by convention.
+            if sim.t in rdict.timepoints: 
 
                 if 'prevalence' in rkey:
                     if 'hpv' in rkey:  # Denominator is whole population
@@ -823,8 +844,15 @@ class age_results(Analyzer):
                     else:  # Denominator is females
                         denom = bin_ages(inds=ppl.is_female_alive, bins=bins)
                     if rdict.by_genotype: denom = denom[None, :]
-                    self.results[rkey][date] = self.results[rkey][date] / (denom)
 
+          #          print(f"we are about to normalize for prevalence, denom: {denom}")
+           #         print(f"self.results[{rkey}][{date}]:{self.results[rkey][date]}")
+                    self.results[rkey][date] = nonNaN_ew_divide(self.results[rkey][date], denom)
+                  #  self.results[rkey][date] = self.results[rkey][date] / (denom)
+            #        print(f"self.results[{rkey}][{date}]:{self.results[rkey][date]}")
+             #       print("just normalized for prevalence") 
+
+ 
                 if 'incidence' in rkey:
                     if 'hpv' in rkey:  # Denominator is susceptible population
                         inds = sc.findinds(ppl.is_female_alive & ~ppl.cancerous.any(axis=0))
@@ -836,14 +864,25 @@ class age_results(Analyzer):
                             inds = sc.findinds(ppl.is_female_alive & ~ppl.cancerous.any(axis=0))
                         denom = bin_ages(inds, bins) / 1e5  # CIN and cancer are per 100,000 women
                     # if 'total' not in result and 'cancer' not in result: denom = denom[None, :] # THIS IS IT!!!!
-                    self.results[rkey][date] = self.results[rkey][date] / denom
+        #            print(f"we are about to normalize for incidence, denom: {denom}")
+         #           print(f"self.results[{rkey}][{date}]:{self.results[rkey][date]}")
+                    #self.results[rkey][date] = self.results[rkey][date] / denom
+                    self.results[rkey][date] = nonNaN_ew_divide(self.results[rkey][date], denom)
+            
+          #          print(f"self.results[{rkey}][{date}]:{self.results[rkey][date]}")
+           #         print("just normalized for incidence")
 
                 if 'mortality' in rkey:
                     # first need to find people who died of other causes today and add them back into denom
                     denom = bin_ages(inds=ppl.is_female_alive, bins=bins)
+            #        print(f"we are about to normalize for mortality, rkey:{rkey}, date:{date}, denom: {denom}")
+
                     scale_factor =  1e5  # per 100,000 women
                     denom /= scale_factor
-                    self.results[rkey][date] = self.results[rkey][date] / denom
+                    #self.results[rkey][date] = self.results[rkey][date] / denom
+                    self.results[rkey][date] = nonNaN_ew_divide(self.results[rkey][date], denom)
+             #       print("just normalized for mortality")
+
 
         return
 
@@ -865,11 +904,10 @@ class age_results(Analyzer):
             if 'compute_fit' in rdict.keys():
                 self.mismatch += self.compute_mismatch(rkey)
 
+
         # Add to sim.fit (declaring the instance variable sim.fit in the process, if needed)
         if hasattr(sim,'fit'): sim.fit += self.mismatch
         else: sim.fit = self.mismatch
-
-    #    print(f"final mismatch = {self.mismatch}")
 
         return
     
@@ -1047,7 +1085,7 @@ class age_results(Analyzer):
         ''' Get number of plots to make '''
 
         if len(self.results) == 0:
-            errormsg = 'Cannot plot since no age results were recorded)'
+            errormsg = 'Cannot plot since no age results were recorded!!'
             raise ValueError(errormsg)
         else:
             years_per_result = [len(rk['years']) for rk in self.result_args.values()]
