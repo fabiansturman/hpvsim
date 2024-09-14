@@ -234,6 +234,8 @@ class Calibration(sc.prettyobj):
 
 
         self.years = list(set(self.age_result_years + self.sim_result_years))
+        self.years.sort()
+        print(f"self.years = {self.years}")
 
         #Set the self.sim_end_year instance variable to stop wasteful tail-running of our sim
         if sim['end'] > max(self.years):                #If our simulation is going on for too long, set self.sim_end_year s.t. when we run our sim, we stop earlier...
