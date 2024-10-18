@@ -1,0 +1,4 @@
+year,name,age,sex,genotype,value
+2000,cancer_incidence,30,female,total,26
+2000,cancer_incidence,55,female,total,262
+2000,cancer_incidence,85,female,total,107

@@ -286,10 +286,10 @@ class Calibration(sc.prettyobj):
     def adaptive_prune_prob(self, year):
         '''
         For use when doing adaptive pruning
-        If optuna suggests we prune a simulation which is currently at year {year}, returns the probability that we will indeed prune, as opposed to 'leaking through' (a function of the proportion of data up to this year and the leakiness coefficient)
+        If optuna suggests we prune a simulation which is currently at year {year}, returns the probability that we will indeed prune, as opposed to 'leaking through'
         '''
         prob = 0
-        for y in self.years:
+        for y in self.years: #we can assume self.years is sorted, as it is not changed outside of the constructor and the constructor sorts it
             if y > year:
                 break
             prob += self.data_distribution[y]

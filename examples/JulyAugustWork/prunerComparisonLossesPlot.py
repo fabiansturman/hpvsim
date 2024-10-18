@@ -88,9 +88,14 @@ fig.update_layout(
      )
 )
 
-fig.update_layout(yaxis_title='Best Loss', title='Calibration with dataset 1: loss after 5000 trials',
+fig.update_layout(yaxis_title='Best Loss after 5000 trials', title='Dataset 1',
                   template='simple_white')
 
+fig.update_layout(
+    title=dict(font=dict(size=30)),
+    yaxis_title=dict(font=dict(size=20)),
+    title_x = 0.5
+)
 
 fig.show()
 
@@ -176,9 +181,14 @@ fig.update_layout(
      )
 )
 
-fig.update_layout(yaxis_title='Best Loss', title='Calibration with dataset 2: loss after 5000 trials',
+fig.update_layout(yaxis_title='Best Loss after 5000 trials', title='Dataset 2',
                   template='simple_white')
 
+fig.update_layout(
+    title=dict(font=dict(size=30)),
+    yaxis_title=dict(font=dict(size=20)),
+    title_x = 0.5
+)
 
 fig.show()
 
@@ -262,9 +272,14 @@ fig.update_layout(
      )
 )
 
-fig.update_layout(yaxis_title='Best Loss', title='Calibration with dataset 3: loss after 5000 trials',
+fig.update_layout(yaxis_title='Best Loss after 5000 trials', title='Dataset 3',
                   template='simple_white')
 
+fig.update_layout(
+    title=dict(font=dict(size=30)),
+    yaxis_title=dict(font=dict(size=20)),
+    title_x = 0.5
+)
 
 fig.show()
 
@@ -273,7 +288,7 @@ fig.show()
 fig=go.Figure()
 
 # Adding min/max bars to plot
-hyperband_minmax = [0.160,0.284]
+hyperband_minmax = [0.155,0.284]
 median_minmax = [0.131, 0.168]
 shrf2_minmax = [0.150, 0.176]
 shrf3_minmax = [0.158, 0.251]
@@ -349,8 +364,197 @@ fig.update_layout(
      )
 )
 
-fig.update_layout(yaxis_title='Best Loss', title='Calibration with dataset 4: loss after 5000 trials',
+fig.update_layout(yaxis_title='Best Loss after 5000 trials', title='Dataset 4',
                   template='simple_white')
 
+fig.update_layout(
+    title=dict(font=dict(size=30)),
+    yaxis_title=dict(font=dict(size=20)),
+    title_x = 0.5
+)
+fig.show()
+
+## DATASET 5
+fig=go.Figure()
+
+# Adding min/max bars to plot
+hyperband_minmax = [0.141,0.244]
+median_minmax = [0.136, 0.176]
+shrf2_minmax = [0.137, 0.202]
+shrf3_minmax = [0.144, 0.251]
+shrf4_minmax = [0.144, 0.259]
+nop_minmax =  [0.134, 0.158]
+
+fig.add_trace(go.Scatter(x=[0.5,3.5], y=[hyperband_minmax[0]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='blue', width=2))) #mean
+fig.add_trace(go.Scatter(x=[0.5,3.5], y=[hyperband_minmax[1]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='blue', width=2))) #mean
+
+fig.add_trace(go.Scatter(x=[5.5,8.5], y=[median_minmax[0]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='orange', width=2))) #mean
+fig.add_trace(go.Scatter(x=[5.5,8.5], y=[median_minmax[1]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='orange', width=2))) #mean
+
+fig.add_trace(go.Scatter(x=[10.5,13.5], y=[shrf2_minmax[0]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='green', width=2))) #mean
+fig.add_trace(go.Scatter(x=[10.5,13.5], y=[shrf2_minmax[1]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='green', width=2))) #mean
+
+fig.add_trace(go.Scatter(x=[15.5,18.5], y=[shrf3_minmax[0]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='red', width=2))) #mean
+fig.add_trace(go.Scatter(x=[15.5,18.5], y=[shrf3_minmax[1]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='red', width=2))) #mean
+
+fig.add_trace(go.Scatter(x=[20.5,23.5], y=[shrf4_minmax[0]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='purple', width=2))) #mean
+fig.add_trace(go.Scatter(x=[20.5,23.5], y=[shrf4_minmax[1]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='purple', width=2))) #mean
+
+fig.add_trace(go.Scatter(x=[25.5,28.5], y=[nop_minmax[0]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='brown', width=2))) #mean
+fig.add_trace(go.Scatter(x=[25.5,28.5], y=[nop_minmax[1]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='brown', width=2))) #mean
+
+
+#also plot mins and maxs!! !!!!!!
+
+# Plot the 95% CIs
+no_datapoints = 42
+hyperband = [6.26/no_datapoints,7.05/no_datapoints,7.84/no_datapoints]
+median = [6.04/no_datapoints,6.35/no_datapoints,6.66/no_datapoints]
+shrf2 = [5.88/no_datapoints,6.36/no_datapoints,6.84/no_datapoints]
+shrf3 = [7.97/no_datapoints,8.83/no_datapoints,9.70/no_datapoints]
+shrf4 = [8.09/no_datapoints,9.15/no_datapoints,10.22/no_datapoints]
+nop = [6.07/no_datapoints,6.25/no_datapoints,6.43/no_datapoints]
+
+fig.add_hline(y=nop[0], line_width=1.5, line_dash='dash')
+fig.add_hline(y=nop[2], line_width=1.5, line_dash='dash')
+
+fig.add_trace(go.Scatter(x=[0,4], y=[hyperband[2]]*2, fill=None, line_color='blue',mode='lines',line_width=0,showlegend=False)) #upper bound of CI
+fig.add_trace(go.Scatter(x=[0,4], y=[hyperband[0]]*2, fill='tonexty',line_color='blue', mode='lines', line_width=0,showlegend=False)) #lower bound of CI
+fig.add_trace(go.Scatter(x=[0,4], y=[hyperband[1]]*2, name='Average' ,fill=None,line=dict(color='blue', width=2))) #mean
+
+fig.add_trace(go.Scatter(x=[5,9], y=[median[2]]*2, fill=None, line_color='orange',mode='lines',line_width=0,showlegend=False))
+fig.add_trace(go.Scatter(x=[5,9], y=[median[0]]*2, fill='tonexty',line_color='orange', mode='lines', line_width=0,showlegend=False))
+fig.add_trace(go.Scatter(x=[5,9], y=[median[1]]*2, name='Average' ,fill=None,line=dict(color='orange', width=2)))
+
+fig.add_trace(go.Scatter(x=[10,14], y=[shrf2[2]]*2, fill=None, line_color='green',mode='lines',line_width=0,showlegend=False))
+fig.add_trace(go.Scatter(x=[10,14], y=[shrf2[0]]*2, fill='tonexty',line_color='green', mode='lines', line_width=0,showlegend=False))
+fig.add_trace(go.Scatter(x=[10,14], y=[shrf2[1]]*2, name='Average' ,fill=None,line=dict(color='green', width=2)))
+
+fig.add_trace(go.Scatter(x=[15,19], y=[shrf3[2]]*2, fill=None, line_color='red',mode='lines',line_width=0,showlegend=False))
+fig.add_trace(go.Scatter(x=[15,19], y=[shrf3[0]]*2, fill='tonexty',line_color='red', mode='lines', line_width=0,showlegend=False))
+fig.add_trace(go.Scatter(x=[15,19], y=[shrf3[1]]*2, name='Average' ,fill=None,line=dict(color='red', width=2)))
+
+fig.add_trace(go.Scatter(x=[20,24], y=[shrf4[2]]*2, fill=None, line_color='purple',mode='lines',line_width=0,showlegend=False))
+fig.add_trace(go.Scatter(x=[20,24], y=[shrf4[0]]*2, fill='tonexty',line_color='purple', mode='lines', line_width=0,showlegend=False))
+fig.add_trace(go.Scatter(x=[20,24], y=[shrf4[1]]*2, name='Average' ,fill=None,line=dict(color='purple', width=2)))
+
+fig.add_trace(go.Scatter(x=[25,29], y=[nop[2]]*2, fill=None, line_color='brown',mode='lines',line_width=0,showlegend=False))
+fig.add_trace(go.Scatter(x=[25,29], y=[nop[0]]*2, fill='tonexty',line_color='brown', mode='lines', line_width=0,showlegend=False))
+fig.add_trace(go.Scatter(x=[25,29], y=[nop[1]]*2, name='Average' ,fill=None,line=dict(color='brown', width=2)))
+
+
+
+fig.update_traces()
+
+fig.update_layout(
+     xaxis=dict(
+          tickmode='array',
+          tickvals=[2,7,12,17,22,27],
+          ticktext=['Hyperband', 'Median', 'Succ. Halving rf2','Succ. Halving rf3','Succ. Halving rf4', 'No Pruning'],
+     )
+)
+
+fig.update_layout(yaxis_title='Best Loss after 5000 trials', title='Dataset 5',
+                  template='simple_white')
+
+fig.update_layout(
+    title=dict(font=dict(size=30)),
+    yaxis_title=dict(font=dict(size=20)),
+    title_x = 0.5
+)
+
+
+fig.show()
+
+## DATASET 6
+fig=go.Figure()
+
+# Adding min/max bars to plot
+hyperband_minmax = [0.150,0.245]
+median_minmax = [0.138, 0.220]
+shrf2_minmax = [0.135, 0.325]
+shrf3_minmax = [0.155, 0.320]
+shrf4_minmax = [0.163, 0.388]
+nop_minmax =  [0.120, 0.146]
+
+fig.add_trace(go.Scatter(x=[0.5,3.5], y=[hyperband_minmax[0]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='blue', width=2))) #mean
+fig.add_trace(go.Scatter(x=[0.5,3.5], y=[hyperband_minmax[1]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='blue', width=2))) #mean
+
+fig.add_trace(go.Scatter(x=[5.5,8.5], y=[median_minmax[0]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='orange', width=2))) #mean
+fig.add_trace(go.Scatter(x=[5.5,8.5], y=[median_minmax[1]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='orange', width=2))) #mean
+
+fig.add_trace(go.Scatter(x=[10.5,13.5], y=[shrf2_minmax[0]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='green', width=2))) #mean
+fig.add_trace(go.Scatter(x=[10.5,13.5], y=[shrf2_minmax[1]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='green', width=2))) #mean
+
+fig.add_trace(go.Scatter(x=[15.5,18.5], y=[shrf3_minmax[0]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='red', width=2))) #mean
+fig.add_trace(go.Scatter(x=[15.5,18.5], y=[shrf3_minmax[1]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='red', width=2))) #mean
+
+fig.add_trace(go.Scatter(x=[20.5,23.5], y=[shrf4_minmax[0]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='purple', width=2))) #mean
+fig.add_trace(go.Scatter(x=[20.5,23.5], y=[shrf4_minmax[1]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='purple', width=2))) #mean
+
+fig.add_trace(go.Scatter(x=[25.5,28.5], y=[nop_minmax[0]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='brown', width=2))) #mean
+fig.add_trace(go.Scatter(x=[25.5,28.5], y=[nop_minmax[1]]*2, name='Average', mode='lines' ,fill=None,line=dict(color='brown', width=2))) #mean
+
+
+#also plot mins and maxs!! !!!!!!
+
+# Plot the 95% CIs
+no_datapoints = 31
+hyperband = [5.26/no_datapoints,5.85/no_datapoints,6.45/no_datapoints]
+median = [4.65/no_datapoints,5.09/no_datapoints,5.53/no_datapoints]
+shrf2 = [4.72/no_datapoints,5.77/no_datapoints,6.81/no_datapoints]
+shrf3 = [6.02/no_datapoints,7.00/no_datapoints,7.98/no_datapoints]
+shrf4 = [6.51/no_datapoints,7.79/no_datapoints,9.06/no_datapoints]
+nop = [3.94/no_datapoints,4.10/no_datapoints,4.25/no_datapoints]
+
+fig.add_hline(y=nop[0], line_width=1.5, line_dash='dash')
+fig.add_hline(y=nop[2], line_width=1.5, line_dash='dash')
+
+fig.add_trace(go.Scatter(x=[0,4], y=[hyperband[2]]*2, fill=None, line_color='blue',mode='lines',line_width=0,showlegend=False)) #upper bound of CI
+fig.add_trace(go.Scatter(x=[0,4], y=[hyperband[0]]*2, fill='tonexty',line_color='blue', mode='lines', line_width=0,showlegend=False)) #lower bound of CI
+fig.add_trace(go.Scatter(x=[0,4], y=[hyperband[1]]*2, name='Average' ,fill=None,line=dict(color='blue', width=2))) #mean
+
+fig.add_trace(go.Scatter(x=[5,9], y=[median[2]]*2, fill=None, line_color='orange',mode='lines',line_width=0,showlegend=False))
+fig.add_trace(go.Scatter(x=[5,9], y=[median[0]]*2, fill='tonexty',line_color='orange', mode='lines', line_width=0,showlegend=False))
+fig.add_trace(go.Scatter(x=[5,9], y=[median[1]]*2, name='Average' ,fill=None,line=dict(color='orange', width=2)))
+
+fig.add_trace(go.Scatter(x=[10,14], y=[shrf2[2]]*2, fill=None, line_color='green',mode='lines',line_width=0,showlegend=False))
+fig.add_trace(go.Scatter(x=[10,14], y=[shrf2[0]]*2, fill='tonexty',line_color='green', mode='lines', line_width=0,showlegend=False))
+fig.add_trace(go.Scatter(x=[10,14], y=[shrf2[1]]*2, name='Average' ,fill=None,line=dict(color='green', width=2)))
+
+fig.add_trace(go.Scatter(x=[15,19], y=[shrf3[2]]*2, fill=None, line_color='red',mode='lines',line_width=0,showlegend=False))
+fig.add_trace(go.Scatter(x=[15,19], y=[shrf3[0]]*2, fill='tonexty',line_color='red', mode='lines', line_width=0,showlegend=False))
+fig.add_trace(go.Scatter(x=[15,19], y=[shrf3[1]]*2, name='Average' ,fill=None,line=dict(color='red', width=2)))
+
+fig.add_trace(go.Scatter(x=[20,24], y=[shrf4[2]]*2, fill=None, line_color='purple',mode='lines',line_width=0,showlegend=False))
+fig.add_trace(go.Scatter(x=[20,24], y=[shrf4[0]]*2, fill='tonexty',line_color='purple', mode='lines', line_width=0,showlegend=False))
+fig.add_trace(go.Scatter(x=[20,24], y=[shrf4[1]]*2, name='Average' ,fill=None,line=dict(color='purple', width=2)))
+
+fig.add_trace(go.Scatter(x=[25,29], y=[nop[2]]*2, fill=None, line_color='brown',mode='lines',line_width=0,showlegend=False))
+fig.add_trace(go.Scatter(x=[25,29], y=[nop[0]]*2, fill='tonexty',line_color='brown', mode='lines', line_width=0,showlegend=False))
+fig.add_trace(go.Scatter(x=[25,29], y=[nop[1]]*2, name='Average' ,fill=None,line=dict(color='brown', width=2)))
+
+
+
+fig.update_traces()
+
+fig.update_layout(
+     xaxis=dict(
+          tickmode='array',
+          tickvals=[2,7,12,17,22,27],
+          ticktext=['Hyperband', 'Median', 'Succ. Halving rf2','Succ. Halving rf3','Succ. Halving rf4', 'No Pruning']
+     )
+)
+
+
+
+fig.update_layout(yaxis_title='Best Loss after 5000 trials', title='Dataset 6',
+                  template='simple_white')
+
+fig.update_layout(
+    title=dict(font=dict(size=30)),
+    yaxis_title=dict(font=dict(size=20)),
+    title_x = 0.5
+)
 
 fig.show()

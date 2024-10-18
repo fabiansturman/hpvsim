@@ -401,24 +401,29 @@ def make_multical(name,
 
 if __name__ == "__main__":
     #parameters - we are doing 4 pruning setups (3 with pruners and 1 with no pruning) and have 16 threads available, so can run 4 calibrations concurrently per setup (this computer has 20 theads, but 19 usable due to this program also taking a thread)
-    name = "C:\\Users\\fabia\\Documents\\GitHub\\hpvsim\\RawTemp\\Sep1424_6"
-    seeds = [3,4,5]
+    name = "C:\\Users\\fabia\\Documents\\GitHub\\hpvsim\\RawTemp\\Sep2424_1"
+    seeds = [0,1,2,3,4] ; seeds2 = [6,7,8,9,10]
     n_workers = 1   #number of workers per calibration
-    n_agents = 10e3
-    n_trials = 100000000000000000000
+    n_agents = 10e3    
+    n_trials = 5000#100000000000000000000
     leakiness = 1
-    pruning = 1 #-1:no pruning ; 1:basic pruning ; 2:leaky pruning ; 3:adaptive pruning
+    pruning = 3 #-1:no pruning ; 1:basic pruning ; 2:leaky pruning ; 3:adaptive pruning
     verbose = True #set to True for output at the end of every completed trial
-    datafiles = ['docs\\tutorials\\nigeria_cancer_cases.csv',
-                 'docs\\tutorials\\nigeria_cancer_types.csv']
+    datafiles = [#'docs\\tutorials\\nigeria_cancer_cases.csv',
+                 #'docs\\tutorials\\nigeria_cancer_types.csv',
+                 'Set 3\\cancer_incidence_2000.csv',
+                 'Set 3\\cancers_2010.csv',
+                 'Set 3\\hpv_prevalence_2020.csv',
+                 ]
 
     shrf4 = op.pruners.SuccessiveHalvingPruner(reduction_factor=4)
     median = op.pruners.MedianPruner()
+    hyperband = op.pruners.HyperbandPruner()
 
 
     ###### Setting up callback to cut off a trial after a given amount of time ##########
     calibration_start_time = sc.tic()
-    study_cutoff_time = 20000 #seconds
+    study_cutoff_time = 13500 #seconds
     def time_cutoff_callback(study, trial, start = calibration_start_time, cutoff = study_cutoff_time):
         '''
         Stops a study {study_cutoff_time} seconds after {calibration_start_time}, to stop a study after a certain amount of time, even if the desired number of trials has not yet been reached
@@ -431,7 +436,7 @@ if __name__ == "__main__":
     
 
     #set up multicalibrations
-    mc_shrf4 = make_multical(name = f"{name}_shrf4",
+    mc_shrf4 = make_multical(name = f"{name}_shrf4_s1",
                           seeds=seeds,
                           n_workers=n_workers,
                           n_agents = n_agents,
@@ -441,19 +446,21 @@ if __name__ == "__main__":
                           pruner = shrf4,
                           datafiles=datafiles,
                           verbose = verbose,
-                          callback=time_cutoff_callback)
-    mc_median = make_multical(name = f"{name}_median",
+                          callback=None#time_cutoff_callback
+    )
+    mc_median = make_multical(name = f"{name}_shrf4full_s1",
                           seeds=seeds,
                           n_workers=n_workers,
                           n_agents = n_agents,
                           n_trials = n_trials,
                           leakiness=leakiness,
-                          pruning=pruning,
-                          pruner = median,
+                          pruning=1,
+                          pruner = shrf4,
                           datafiles=datafiles,
                           verbose = verbose,
-                          callback=time_cutoff_callback)
-    mc_np = make_multical(name = f"{name}_np",
+                          callback=None#time_cutoff_callback
+    )
+    mc_np = make_multical(name = f"{name}_np_s1",
                           seeds=seeds,
                           n_workers=n_workers,
                           n_agents = n_agents,
@@ -463,14 +470,81 @@ if __name__ == "__main__":
                           pruner = shrf4,
                           datafiles=datafiles,
                           verbose = verbose,
-                          callback=time_cutoff_callback)
+                          callback=None#time_cutoff_callback
+    )
+    
     
     mc_shrf4.calibrations += mc_median.calibrations
     mc_shrf4.calibrations += mc_np.calibrations
     
+    
+
+
+
     #Calibrate each in parelell - so that is 3 calibrations for each of the three pruning options, each with 1 worker, happening in parelell
     mc_shrf4.calibrate()        
 
+
+    #repeat for our next set of seeds
+        ###### Setting up callback to cut off a trial after a given amount of time ##########
+    calibration_start_time = sc.tic()
+    study_cutoff_time = 13500 #seconds
+    def time_cutoff_callback(study, trial, start = calibration_start_time, cutoff = study_cutoff_time):
+        '''
+        Stops a study {study_cutoff_time} seconds after {calibration_start_time}, to stop a study after a certain amount of time, even if the desired number of trials has not yet been reached
+        '''
+        time_diff = sc.toc(start, output=True) #output=whether to return the time difference
+       # print(f"time_diff = {time_diff}")
+        if time_diff >= cutoff:
+            study.stop()
+    ######################################################################################
+    
+
+    #set up multicalibrations
+    mc_shrf4 = make_multical(name = f"{name}_shrf4_s2",
+                          seeds=seeds2,
+                          n_workers=n_workers,
+                          n_agents = n_agents,
+                          n_trials = n_trials,
+                          leakiness=leakiness,
+                          pruning=pruning,
+                          pruner = shrf4,
+                          datafiles=datafiles,
+                          verbose = verbose,
+                          callback=None#time_cutoff_callback
+    )
+    mc_median = make_multical(name = f"{name}_shrf4full_s2",
+                          seeds=seeds2,
+                          n_workers=n_workers,
+                          n_agents = n_agents,
+                          n_trials = n_trials,
+                          leakiness=leakiness,
+                          pruning=1,
+                          pruner = shrf4,
+                          datafiles=datafiles,
+                          verbose = verbose,
+                          callback=None#time_cutoff_callback
+    )
+    mc_np = make_multical(name = f"{name}_np_s2",
+                          seeds=seeds2,
+                          n_workers=n_workers,
+                          n_agents = n_agents,
+                          n_trials = n_trials,
+                          leakiness=leakiness,
+                          pruning=-1,
+                          pruner = shrf4,
+                          datafiles=datafiles,
+                          verbose = verbose,
+                          callback=None#time_cutoff_callback
+    )
+    
+    
+    mc_shrf4.calibrations += mc_median.calibrations
+    mc_shrf4.calibrations += mc_np.calibrations
+    
+
+    #Calibrate each in parelell - so that is 3 calibrations for each of the three pruning options, each with 1 worker, happening in parelell
+    mc_shrf4.calibrate()     
 
 
     print("Done.")
