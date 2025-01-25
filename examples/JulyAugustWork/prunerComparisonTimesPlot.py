@@ -98,6 +98,8 @@ fig.update_layout(
     title_x = 0.5
 )
 
+fig.update_yaxes(range = [0,1.005])
+
 fig.show()
 
 ## DATASET 2
@@ -180,6 +182,8 @@ fig.update_layout(
           ticktext=['Hyperband', 'Median', 'Succ. Halving rf2','Succ. Halving rf3','Succ. Halving rf4', 'No Pruning']
      )
 )
+
+fig.update_yaxes(range = [0,1.005])
 
 fig.update_layout(yaxis_title='Normalised time to complete 5000 trials', title='Dataset 6',
                   xaxis_title='Pruner',

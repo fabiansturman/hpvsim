@@ -5,31 +5,8 @@ import optuna as op
 import sciris as sc
 import numpy as np
 
-rand_seed = 5 #random seed both for our simulation and for optuna; set to None to assign variable seeds to both
 
 if __name__ == "__main__":#to allow for using several workers in parellell
-
-    # Create the age analyzers.
-    az = hpv.age_results(
-        result_args=sc.objdict(
-            # The keys of this dictionary are any results you want by age, and can be any key of sim.results. We are analyzing these 4 values by ages in 2000, 2010, 2015,
-            hpv_prevalence=sc.objdict( 
-                years=[2000,2010,2020],
-                edges=np.array([0., 15., 20., 25., 30., 35. ,40., 45., 50., 55., 65.,70.,75.,80.,85., 100.]), #define the extremities of the age buckets for each analyser
-            ),
-            cancer_incidence=sc.objdict(
-                years=[2000,2010,2020],
-                edges=np.array([0., 15., 20., 25., 30., 35. ,40., 45., 50., 55., 65.,70.,75.,80.,85., 100.]), 
-            ),
-        )
-    )
-
-    #Define the interventions that will be presetn in the simulation, mimicking that found in the uk (kinda)
-    #prob = 0.6 # prob = 60% means we vaccinate 60% of girls (or girls and boys if we add sex = [0,1])
-
-    #vx = hpv.routine_vx(prob=prob, start_year=2015, age_range=[9,10], product='bivalent')
-        #TODO: I CANT SEEM TO GET INTERVENTIONS ADDED TO MY SIM WHEN CALIBRATING, WITHOUT GETTING A VALUEERROR 'PROVIDE EITHER A LIST OF YEARS OR A START YEAR, OR BOTH'
-
     # Configure a simulation with some parameters
     pars = dict(n_agents=10e3, 
                 start=1970,
@@ -38,8 +15,6 @@ if __name__ == "__main__":#to allow for using several workers in parellell
                 location='nigeria', #united kingdom
                 genotypes=[16, 18, 'hi5'],
                 verbose = 0, #1 means verbose, 0 means not verbose
-                rand_seed = rand_seed,
-                analyzers=[az]
                 )
     sim = hpv.Sim(pars)
     #print(f"Simulation's parameter keys: <{sim.pars.keys()}>")
@@ -97,7 +72,6 @@ if __name__ == "__main__":#to allow for using several workers in parellell
         total_trials=2, n_workers=1, 
         keep_db=True, #for some reason there is a bug where if i set keep_db to its default value of false, i get a WinError 32 (the process cannot access the file because it is being used by another process) relating to line 431 of calibration.py
         name="CalibrationRawResults\\hpvsim_calubration_13June24_11_",
-        rand_seed = rand_seed, #rand_seed, #Keeping random seed constant for reproducibility (random seed is used for optuna runs)
         sampler_type = "tpe",       #Accepted values are  ["random", "grid", "tpe", "cmaes", "nsgaii", "qmc", "bruteforce"]
         sampler_args = None, # dict(constant_lia r=True), # dict(multivariate=True, group=True, constant_liar=True)       # Refer to optuna documentation for relevant arguments for a given sampler type; https://optuna.readthedocs.io/en/stable/reference/samplers/index.html 
         pruning = -1, #when pruning, we can suppress warnings with the flag python -W ingore foo.py, when running file foo.py in command prompt.
