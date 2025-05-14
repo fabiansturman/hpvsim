@@ -365,13 +365,18 @@ class BaseSim(ParsObj):
                     tp_raw  = sc.datetoyear(date) # Get the 'raw' timepoint, not rounded to the nearest timestep
                 except:
                     try:
+                        print("floating")
+                        print(date)
                         tp_raw  = float(date) # This must be float, not int, otherwise some attempts to get t will fail
+                        print(tp_raw)
                     except:
                         errormsg = f'Could not understand the provided date {date}; try specifying it as a float or in a format understood by sc.readdate().'
                         raise ValueError(errormsg)
 
                 # If the requested date is within the range of years covered by the sim,
                 # return the closest date
+                print(f"{tp_raw}, {self['start']}, {self['end']}")
+                quit()
                 if (tp_raw >= self['start']) and (tp_raw <= self['end']):
                     if exact_match:
                         tp_ind = sc.findinds(self.yearvec, tp_raw)

@@ -80,12 +80,12 @@ if __name__ == "__main__":
     results_to_plot = []#'cancer_incidence', 'asr_cancer_incidence']
 
 
-    name = "C:\\Users\\fabia\\Documents\\GitHub\\hpvsim\\RawTemp\\Aug1624_24"
+    name = "C:\\Users\\fabia\\Documents\\GitHub\\hpvsim\\RawTemp\\Aug1624_29"
   #  journal_file_path = f"{name}.log"
    # lock_obj = optuna.storages.JournalFileOpenLock(journal_file_path)
     
 
-    n_trials  = 5000
+    n_trials  = 5
 
     # Create the calibration object, run it, and plot the results
     calib = hpv.Calibration(
@@ -99,17 +99,17 @@ if __name__ == "__main__":
         name=name,
        # storage= optuna.storages.JournalStorage(optuna.storages.JournalFileStorage(journal_file_path,lock_obj=lock_obj)), #for multithreading, optuna reccomends this storage mode instead of the default SQLlite.
         rand_seed=rand_seed,
-        total_trials=n_trials, n_workers=20,
+        total_trials=n_trials, n_workers=1,
       #  leakiness = 1,
-        pruning = 1 , #-1:no pruning ; 1:basic pruning ; 2:leaky pruning ; 3:adaptive pruning,
+        pruning = -1 , #-1:no pruning ; 1:basic pruning ; 2:leaky pruning ; 3:adaptive pruning,
         pruner = None# optuna.pruners.HyperbandPruner(min_resource=1, max_resource=n_trials, reduction_factor=3)
     )
 
     
     calib.calibrate(die=False,plots=["learning_curve", "timeline"], detailed_contplot=[],save_to_csv=None)
 
-    calib.plot_learning_curve()
-    calib.plot_timeline()
+    #calib.plot_learning_curve()
+    #calib.plot_timeline()
 
 
     calib.plot(res_to_plot=5);
